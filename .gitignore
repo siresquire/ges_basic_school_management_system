@@ -32,9 +32,18 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local database & backups
+prisma/dev.db
+prisma/dev.db-journal
+backups/
 
 # vercel
 .vercel
+
+# claude code (session data, memory)
+.claude/
 
 # typescript
 *.tsbuildinfo

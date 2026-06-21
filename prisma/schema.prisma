@@ -1,0 +1,468 @@
+// School Management System — database schema
+//
+// LOCAL DEVELOPMENT uses SQLite (free, zero setup).
+// FOR DEPLOYMENT on Supabase/Neon, change provider to "postgresql"
+// and set DATABASE_URL in .env — see DEPLOYMENT.md. No other changes needed.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Accounts & people ----------
+
+// role: SUPER_ADMIN | ADMIN | TEACHER | STUDENT | PARENT
+// assignedLevels: comma-separated for ADMIN role, e.g. "PRIMARY,JHS". Empty = all enabled levels.
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  passwordHash   String
+  name           String
+  role           String
+  active         Boolean  @default(true)
+  assignedLevels String   @default("")
+  createdAt      DateTime @default(now())
+
+  teacher        Teacher?
+  studentProfile Student?  @relation("StudentAccount")
+  children       Student[] @relation("ParentChildren")
+}
+
+// status: ACTIVE | INACTIVE | RETIRED | POSTED_OUT
+model Teacher {
+  id        String  @id @default(cuid())
+  userId    String? @unique
+  user      User?   @relation(fields: [userId], references: [id])
+  staffId   String? @unique
+  firstName String
+  lastName  String
+  otherNames String?
+  gender    String
+  phone     String?
+  email     String?
+  status    String  @default("ACTIVE")
+
+  // Personal
+  dateOfBirth          DateTime?
+  religion             String?
+  maritalStatus        String?
+  teacherUnion         String?   // GNAT | NAGRAT | CCT | TEWU | NAGRAT | NONE | Other
+
+  // Hometown
+  hometown             String?
+  hometownDistrict     String?
+  hometownRegion       String?
+
+  // Residence
+  townOfResidence      String?
+  residenceDistrict    String?
+  residenceRegion      String?
+  ghanaPostCode        String?
+
+  // Identity
+  ghanaCardNumber      String?
+
+  // Professional
+  dateOfFirstAppointment DateTime?
+  areaOfSpecialization   String?
+  ntcLicenseNumber       String?
+  ssnitNumber            String?
+  currentRank            String?
+  salaryGradeType        String?   // PSH | PSL
+  gradeNumber            Int?
+  stepNumber             Int?
+  dateOfLastPromotion    DateTime?
+  datePostedToStation    DateTime?
+  periodsPerWeek         Int?
+  emisCode               String?
+  emisPassword           String?
+
+  // Academic qualification
+  highestAcademicQual    String?   // Certificate | Diploma | Degree | Masters | PhD
+  highestAcademicCourse  String?
+  highestAcademicYear    String?
+
+  // Professional qualification
+  highestProfQual        String?
+  highestProfCourse      String?
+  highestProfYear        String?
+
+  // College of Education
+  collegeOfEducation     String?
+
+  // Bank
+  bankName               String?
+  bankBranch             String?
+  bankAccountNumber      String?
+
+  // Emergency contacts
+  ec1Name                String?
+  ec1Phone               String?
+  ec1Relation            String?
+  ec2Name                String?
+  ec2Phone               String?
+  ec2Relation            String?
+  ec3Name                String?
+  ec3Phone               String?
+  ec3Relation            String?
+
+  classTeacherOf ClassGroup[]
+  assignments    SubjectAssignment[]
+  timetableSlots TimetableSlot[]
+  signatureAsset ImageAsset?
+}
+
+model Student {
+  id                  String    @id @default(cuid())
+  admissionNo         String    @unique
+  legacyAdmissionNo   String?   // school's own/internal admission number (migration field)
+  firstName           String
+  lastName            String
+  otherNames          String?
+  gender              String
+  dateOfBirth         DateTime?
+  classGroupId        String?
+  classGroup          ClassGroup? @relation(fields: [classGroupId], references: [id])
+  guardianName        String?
+  guardianPhone       String?
+  address             String?   // kept for backwards compat — new field is residence
+  residence           String?   // where the student stays
+  hometown            String?   // where the student comes from
+  status              String   @default("ACTIVE") // ACTIVE | TRANSFERRED | GRADUATED | WITHDRAWN
+  userId              String?  @unique
+  user                User?    @relation("StudentAccount", fields: [userId], references: [id])
+  parentUserId        String?
+  parentUser          User?    @relation("ParentChildren", fields: [parentUserId], references: [id])
+  createdAt           DateTime @default(now())
+
+  // Emergency contacts
+  ec1Name             String?
+  ec1Phone            String?
+  ec1Relation         String?
+  ec2Name             String?
+  ec2Phone            String?
+  ec2Relation         String?
+  ec3Name             String?
+  ec3Phone            String?
+  ec3Relation         String?
+
+  // Health & identity
+  healthInsuranceType String?   // NHIS | PRIVATE
+  healthInsuranceNo   String?
+  ghanaCardNo         String?
+
+  scores         Score[]
+  attendance     AttendanceRecord[]
+  termAttendance TermAttendance[]
+  payments       Payment[]
+  reportRemarks  ReportRemark[]
+
+  @@index([classGroupId, status])
+  @@index([parentUserId])
+}
+
+// ---------- Academic structure ----------
+
+// stage: KG | PRIMARY | JHS — level orders classes KG1=0 ... JHS3=10
+model ClassGroup {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  stage          String
+  level          Int
+  classTeacherId String?
+  classTeacher   Teacher? @relation(fields: [classTeacherId], references: [id])
+
+  students       Student[]
+  assignments    SubjectAssignment[]
+  scores         Score[]
+  attendance     AttendanceRecord[]
+  termAttendance TermAttendance[]
+  feeItems       FeeItem[]
+  timetableSlots TimetableSlot[]
+}
+
+model AcademicYear {
+  id    String @id @default(cuid())
+  name  String @unique // e.g. "2025/2026"
+  terms Term[]
+}
+
+model Term {
+  id             String       @id @default(cuid())
+  name           String // "Term 1" | "Term 2" | "Term 3"
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  startDate      DateTime
+  endDate        DateTime
+  nextTermBegins DateTime?
+  isCurrent      Boolean      @default(false)
+
+  scores         Score[]
+  attendance     AttendanceRecord[]
+  termAttendance TermAttendance[]
+  feeItems       FeeItem[]
+  payments       Payment[]
+  reportRemarks  ReportRemark[]
+
+  @@unique([academicYearId, name])
+}
+
+// stages: comma-separated list of stages the subject is taught at, e.g. "PRIMARY,JHS"
+model Subject {
+  id     String @id @default(cuid())
+  name   String @unique
+  stages String
+
+  assignments    SubjectAssignment[]
+  scores         Score[]
+  timetableSlots TimetableSlot[]
+}
+
+// which teacher teaches which subject in which class
+model SubjectAssignment {
+  id           String     @id @default(cuid())
+  teacherId    String
+  teacher      Teacher    @relation(fields: [teacherId], references: [id])
+  subjectId    String
+  subject      Subject    @relation(fields: [subjectId], references: [id])
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+
+  @@unique([teacherId, subjectId, classGroupId])
+  @@index([classGroupId])
+}
+
+// ---------- Assessment ----------
+
+// classScore and examScore are both held out of 100;
+// the report card weights them 50/50 (GES SBA split).
+// cw1–cw4 are the four class works (totalling ≤ 60) exactly as teachers
+// fill them — classScore = total ÷ 60 × 100 stays the canonical value.
+model Score {
+  id           String     @id @default(cuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  subjectId    String
+  subject      Subject    @relation(fields: [subjectId], references: [id])
+  termId       String
+  term         Term       @relation(fields: [termId], references: [id])
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+  cw1          Float?
+  cw2          Float?
+  cw3          Float?
+  cw4          Float?
+  classScore       Float?
+  examScore        Float?
+  recordedBy       String?
+  recordedByUserId String?
+  updatedAt        DateTime @updatedAt
+
+  @@unique([studentId, subjectId, termId])
+  @@index([classGroupId, termId])
+  @@index([subjectId])
+}
+
+// ---------- Attendance ----------
+
+// Per-day register (the future "digital marker"). status: PRESENT | ABSENT | LATE
+model AttendanceRecord {
+  id           String     @id @default(cuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+  termId       String
+  term         Term       @relation(fields: [termId], references: [id])
+  date         DateTime
+  status       String
+
+  @@unique([studentId, date])
+  @@index([classGroupId, termId])
+  @@index([classGroupId, date])
+  @@index([date])
+}
+
+// End-of-term attendance entered as totals from the paper register
+// (how teachers actually work). daysPresent out of daysTotal school days.
+// Takes precedence over daily records on report cards when present.
+model TermAttendance {
+  id           String     @id @default(cuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+  termId       String
+  term         Term       @relation(fields: [termId], references: [id])
+  daysPresent  Int?
+  daysTotal    Int?
+  recordedBy   String?
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([studentId, termId])
+  @@index([classGroupId, termId])
+}
+
+// ---------- Fees ----------
+
+// classGroupId null = applies to every class
+model FeeItem {
+  id           String      @id @default(cuid())
+  name         String
+  amount       Float
+  termId       String
+  term         Term        @relation(fields: [termId], references: [id])
+  classGroupId String?
+  classGroup   ClassGroup? @relation(fields: [classGroupId], references: [id])
+
+  @@index([termId])
+}
+
+// method: CASH | MOMO | BANK
+model Payment {
+  id         String   @id @default(cuid())
+  receiptNo  String   @unique
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  termId     String
+  term       Term     @relation(fields: [termId], references: [id])
+  amount     Float
+  method     String
+  reference  String?
+  note       String?
+  receivedBy String?
+  paidAt     DateTime @default(now())
+
+  @@index([termId, paidAt])
+  @@index([studentId, termId])
+}
+
+// ---------- Timetable ----------
+
+// dayOfWeek: 1=Monday ... 5=Friday; period: 1..8
+// subjectId null + label set = break/assembly/etc.
+model TimetableSlot {
+  id           String     @id @default(cuid())
+  classGroupId String
+  classGroup   ClassGroup @relation(fields: [classGroupId], references: [id])
+  dayOfWeek    Int
+  period       Int
+  subjectId    String?
+  subject      Subject?   @relation(fields: [subjectId], references: [id])
+  teacherId    String?
+  teacher      Teacher?   @relation(fields: [teacherId], references: [id])
+  label        String?
+
+  @@unique([classGroupId, dayOfWeek, period])
+}
+
+// ---------- School profile (single row, id = 1) ----------
+
+// headTeacherName = head of KG & Primary ("Headteacher").
+// jhsHeadName/jhsHeadTitle = head of JHS ("Headmaster" or "Headmistress").
+model SchoolInfo {
+  id               Int     @id @default(1)
+  name             String
+  address          String?
+  phone            String?
+  email            String?
+  motto            String?
+  headTeacherName  String?
+  headTeacherPhone String?
+  jhsHeadName      String?
+  jhsHeadTitle     String? @default("Headmaster")
+  jhsHeadPhone     String?
+}
+
+// System-level configuration managed only by Super Admin.
+// Single row (id = 1). enabledLevels is a comma-separated list of the
+// school stages that are active: CRECHE, KG, PRIMARY, JHS.
+// When a level is disabled its classes are hidden across the system
+// (no data is deleted — existing records are always accessible by admins).
+model SchoolConfig {
+  id                 Int     @id @default(1)
+  enabledLevels      String  @default("KG,PRIMARY,JHS")
+  feesEnabled        Boolean @default(true)
+  timetableEnabled   Boolean @default(true)
+  analyticsEnabled   Boolean @default(true)
+  portalEnabled      Boolean @default(true)
+  transcriptsEnabled Boolean @default(true)
+  attendanceEnabled  Boolean @default(true)
+}
+
+// Grading scale, editable in Settings.
+// section: PRIMARY (KG + Basic 1-6) | JHS — the two parts of the school
+// grade different scales. A score earns the band with the highest minScore
+// it reaches. If a section has no rows, the built-in default scale is used.
+model GradeBand {
+  id       String @id @default(cuid())
+  section  String
+  minScore Float
+  grade    String
+  remark   String
+
+  @@index([section])
+}
+
+// Per-pupil, per-term report card extras. Empty fields fall back to
+// remarks auto-generated from the term average.
+model ReportRemark {
+  id            String  @id @default(cuid())
+  studentId     String
+  student       Student @relation(fields: [studentId], references: [id])
+  termId        String
+  term          Term    @relation(fields: [termId], references: [id])
+  conduct       String?
+  teacherRemark String?
+  headRemark    String?
+
+  @@unique([studentId, termId])
+  @@index([termId])
+}
+
+// ---------- Uploaded images (logo & scanned signatures) ----------
+
+// Every significant action is recorded here for the super admin audit trail.
+// Entries with notifyUserId are also in-app notifications for that user
+// (e.g. a subject teacher whose scores were overwritten by the class teacher).
+model ActivityLog {
+  id           String    @id @default(cuid())
+  actorUserId  String?
+  actorName    String
+  action       String    // SCORE_SAVE | SCORE_OVERRIDE | SCORE_IMPORT | STUDENT_CREATE | STUDENT_STATUS | PAYMENT_RECORD | TEACHER_CREATE | IMPERSONATE
+  detail       String
+  createdAt    DateTime  @default(now())
+  notifyUserId String?
+  seenAt       DateTime?
+
+  @@index([createdAt])
+  @@index([notifyUserId, seenAt])
+}
+
+// Stored in the database on purpose: images this small (logos, signatures)
+// fit comfortably in the free Postgres tier and need no separate file storage.
+// kind: LOGO | HEAD_SIGNATURE | TEACHER_SIGNATURE
+// LOGO and HEAD_SIGNATURE are singletons (teacherId null);
+// TEACHER_SIGNATURE has one row per teacher.
+model ImageAsset {
+  id        String   @id @default(cuid())
+  kind      String
+  teacherId String?  @unique
+  teacher   Teacher? @relation(fields: [teacherId], references: [id])
+  mime      String
+  bytes     Bytes
+  updatedAt DateTime @updatedAt
+}
+
+// One row per failed login attempt. Rows older than 15 min are ignored and pruned opportunistically.
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+}
