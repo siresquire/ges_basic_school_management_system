@@ -1,16 +1,20 @@
 // School Management System — database schema
 //
 // LOCAL DEVELOPMENT uses SQLite (free, zero setup).
-// FOR DEPLOYMENT on Supabase/Neon, change provider to "postgresql"
-// and set DATABASE_URL in .env — see DEPLOYMENT.md. No other changes needed.
+// FOR DEPLOYMENT on Supabase, change provider to "postgresql",
+// set DATABASE_URL (pooled, port 6543) and DIRECT_URL (direct, port 5432).
+// See DEPLOYMENT.md for full instructions.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "sqlite"
+  url       = env("DATABASE_URL")
+  // directUrl is used for migrations/db push — bypasses PgBouncer.
+  // Uncomment when deploying to Supabase (change provider to "postgresql" too).
+  // directUrl = env("DIRECT_URL")
 }
 
 // ---------- Accounts & people ----------
