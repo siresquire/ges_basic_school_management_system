@@ -154,11 +154,10 @@ export async function removeHeadSignature(section: "PRIMARY" | "JHS") {
  * rows submitted from the editor. Rows with an empty grade are dropped —
  * that's also how a band is deleted.
  */
-export async function saveGradeBands(section: "PRIMARY" | "JHS", formData: FormData) {
+export async function saveGradeBands(section: import("@/lib/grading").Section, formData: FormData) {
   const session = await requireAdmin();
   const adminLevels = await getAdminLevels(session);
-  if (section === "PRIMARY" && !canPrimary(adminLevels)) redirect("/settings?error=protected");
-  if (section === "JHS" && !canJHS(adminLevels)) redirect("/settings?error=protected");
+  if (adminLevels && !adminLevels.includes(section)) redirect("/settings?error=protected");
 
   const bands: { section: string; minScore: number; grade: string; remark: string }[] = [];
   for (let i = 0; i < 12; i++) {

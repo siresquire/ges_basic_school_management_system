@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { dataUrl, getSingletonImage } from "@/lib/images";
-import { getGradeBands, SECTION_LABELS, type Section } from "@/lib/grading";
+import { getGradeBands, SECTION_LABELS, sectionForStage, type Section } from "@/lib/grading";
 import { getAdminLevels } from "@/lib/admin-scope";
 import FileInput from "@/components/file-input";
 import {
@@ -100,10 +100,10 @@ export default async function SettingsPage({
         return !lvl || lvl.split(",").some((l) => adminLevels.includes(l));
       })
     : allUsers;
-  const [jhsSigAsset, primaryBands, jhsBands] = await Promise.all([
+  const ALL_SECTIONS: Section[] = ["CRECHE", "KG", "PRIMARY", "JHS"];
+  const [jhsSigAsset, ...allBands] = await Promise.all([
     getSingletonImage("HEAD_SIGNATURE_JHS"),
-    getGradeBands("PRIMARY"),
-    getGradeBands("JHS"),
+    ...ALL_SECTIONS.map((s) => getGradeBands(s)),
   ]);
 
   // Which sections this admin can manage.
@@ -114,10 +114,11 @@ export default async function SettingsPage({
   const logoUrl = dataUrl(logoAsset);
   const headSigUrl = dataUrl(headSigAsset);
   const jhsSigUrl = dataUrl(jhsSigAsset);
-  const bandsBySection: [Section, typeof primaryBands][] = [
-    ...(showPrimarySection ? [["PRIMARY", primaryBands] as [Section, typeof primaryBands]] : []),
-    ...(showJHSSection ? [["JHS", jhsBands] as [Section, typeof jhsBands]] : []),
-  ];
+
+  type BandRow = { min: number; grade: string; remark: string };
+  const bandsBySection: [Section, BandRow[]][] = ALL_SECTIONS.map(
+    (s, i) => [s, allBands[i]] as [Section, BandRow[]]
+  ).filter(([s]) => !adminLevels || adminLevels.includes(s));
 
   const ALL_STAGE_OPTIONS = [
     { value: "CRECHE", label: "Creche" },
@@ -307,8 +308,7 @@ export default async function SettingsPage({
       <div className="card p-6">
         <h2 className="mb-1 font-semibold text-gray-900">Grading scales</h2>
         <p className="mb-4 text-xs text-gray-500">
-          {showPrimarySection && showJHSSection && "KG & Primary and JHS are graded on separate scales. "}
-          {`A score earns the band with the highest "From" score it reaches (e.g. with "From 80 → A", a 85 is an A). One band must start from 0. To remove a band, clear its grade and save.`}
+          {`Each level has its own grading scale. A score earns the band with the highest "From" score it reaches (e.g. with "From 80 → A", a 85 is an A). One band must start from 0. To remove a band, clear its grade and save.`}
         </p>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {bandsBySection.map(([section, bands]) => (

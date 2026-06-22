@@ -14,7 +14,7 @@ export default async function TranscriptPage({ params }: { params: Promise<{ id:
   await requireAdmin();
   const { id } = await params;
 
-  const [student, school, scores, primaryBands, jhsBands] = await Promise.all([
+  const [student, school, scores, crecheBands, kgBands, primaryBands, jhsBands] = await Promise.all([
     prisma.student.findUnique({ where: { id }, include: { classGroup: true } }),
     prisma.schoolInfo.findUnique({ where: { id: 1 } }),
     prisma.score.findMany({
@@ -26,9 +26,12 @@ export default async function TranscriptPage({ params }: { params: Promise<{ id:
       },
       orderBy: { subject: { name: "asc" } },
     }),
+    getGradeBands("CRECHE"),
+    getGradeBands("KG"),
     getGradeBands("PRIMARY"),
     getGradeBands("JHS"),
   ]);
+  const bandsBySectionMap = { CRECHE: crecheBands, KG: kgBands, PRIMARY: primaryBands, JHS: jhsBands };
   if (!student) notFound();
 
   const isJhsNow = student.classGroup?.stage === "JHS";
@@ -79,7 +82,7 @@ export default async function TranscriptPage({ params }: { params: Promise<{ id:
   const termBlocks = [...byTerm.values()]
     .map((termScores) => {
       const first = termScores[0];
-      const bands = sectionForStage(first.classGroup.stage) === "JHS" ? jhsBands : primaryBands;
+      const bands = bandsBySectionMap[sectionForStage(first.classGroup.stage)];
       const rows = termScores
         .map((s) => {
           const total = totalScore(s.classScore, s.examScore);

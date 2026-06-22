@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/db";
 
-// The school grades KG/Primary and JHS on separate scales.
+// Each school level has its own grading scale.
 // Scales are edited in Settings (stored in the GradeBand table);
 // if a section has no saved scale yet, the defaults below are used.
 
-export type Section = "PRIMARY" | "JHS";
+export type Section = "CRECHE" | "KG" | "PRIMARY" | "JHS";
 
 export type GradeBand = { min: number; grade: string; remark: string };
 
@@ -17,13 +17,20 @@ export const DEFAULT_GRADE_BANDS: GradeBand[] = [
   { min: 0, grade: "F", remark: "Fail" },
 ];
 
-/** KG and Primary classes share one scale; JHS has its own. */
+/** Each stage has its own grading section. */
 export function sectionForStage(stage: string): Section {
-  return stage === "JHS" ? "JHS" : "PRIMARY";
+  switch (stage) {
+    case "JHS": return "JHS";
+    case "PRIMARY": return "PRIMARY";
+    case "KG": return "KG";
+    default: return "CRECHE";
+  }
 }
 
 export const SECTION_LABELS: Record<Section, string> = {
-  PRIMARY: "KG & Primary",
+  CRECHE: "Creche & Nursery",
+  KG: "Kindergarten",
+  PRIMARY: "Primary",
   JHS: "JHS",
 };
 
