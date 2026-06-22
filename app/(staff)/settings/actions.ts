@@ -202,9 +202,11 @@ export async function addSubject(formData: FormData) {
   if (dup) redirect("/settings?error=subjectdup");
 
   // Level-restricted admins can only assign stages within their levels.
+  // Default to all their levels if they submitted none — prevents invisible subjects.
   let stages = stagesFrom(formData);
   if (adminLevels) {
     stages = stages.split(",").filter((s) => adminLevels.includes(s)).join(",");
+    if (!stages) stages = adminLevels.join(",");
   }
 
   await prisma.subject.create({ data: { name, stages } });

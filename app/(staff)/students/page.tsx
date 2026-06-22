@@ -7,6 +7,7 @@ import { getTeacherScope, filterClasses } from "@/lib/teacher-scope";
 import { getAdminLevels, levelStageFilter, classStageFilter } from "@/lib/admin-scope";
 import FilterForm from "@/components/filter-form";
 import Icon from "@/components/icon";
+import { TempPasswordCell } from "@/components/temp-password-cell";
 
 export const metadata = { title: "Students" };
 
@@ -48,7 +49,11 @@ export default async function StudentsPage({
   const [students, allClasses, total, noStudentLogin, noParentLogin] = await Promise.all([
     prisma.student.findMany({
       where,
-      include: { classGroup: true },
+      include: {
+        classGroup: true,
+        user: { select: { tempPassword: true } },
+        parentUser: { select: { tempPassword: true } },
+      },
       orderBy: [{ classGroup: { level: "asc" } }, { lastName: "asc" }],
       take: 400,
     }),
@@ -57,6 +62,9 @@ export default async function StudentsPage({
     scope.isAdmin ? prisma.student.count({ where: { userId: null, status: "ACTIVE" } }) : Promise.resolve(0),
     scope.isAdmin ? prisma.student.count({ where: { parentUserId: null, status: "ACTIVE", guardianName: { not: null } } }) : Promise.resolve(0),
   ]);
+  const hasStudentTempPasswords = students.some((s) => s.user?.tempPassword);
+  const hasParentTempPasswords = students.some((s) => s.parentUser?.tempPassword);
+
   // Filter class list by both teacher scope and admin levels
   const classes = filterClasses(scope, adminLevels
     ? allClasses.filter((c) => adminLevels.includes(c.stage))
@@ -78,6 +86,18 @@ export default async function StudentsPage({
               <a href="/students/bulk-parent-logins" className="btn-secondary flex items-center gap-1.5">
                 <Icon name="excel" />
                 Parent logins ({noParentLogin})
+              </a>
+            )}
+            {scope.isAdmin && hasStudentTempPasswords && (
+              <a href="/students/current-passwords" className="btn-secondary flex items-center gap-1.5">
+                <Icon name="excel" />
+                Student passwords
+              </a>
+            )}
+            {scope.isAdmin && hasParentTempPasswords && (
+              <a href="/students/parent-current-passwords" className="btn-secondary flex items-center gap-1.5">
+                <Icon name="excel" />
+                Parent passwords
               </a>
             )}
             <Link href="/excel" className="btn-secondary">
@@ -130,6 +150,8 @@ export default async function StudentsPage({
               <th>Gender</th>
               <th>Class</th>
               <th>Guardian phone</th>
+              <th>Student pwd</th>
+              <th>Parent pwd</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -146,13 +168,23 @@ export default async function StudentsPage({
                 <td>{s.classGroup?.name ?? <span className="text-gray-400">—</span>}</td>
                 <td>{s.guardianPhone ?? <span className="text-gray-400">—</span>}</td>
                 <td>
+                  {s.user?.tempPassword
+                    ? <TempPasswordCell password={s.user.tempPassword} />
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td>
+                  {s.parentUser?.tempPassword
+                    ? <TempPasswordCell password={s.parentUser.tempPassword} />
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td>
                   <span className={s.status === "ACTIVE" ? "badge-green" : "badge-gray"}>{s.status}</span>
                 </td>
               </tr>
             ))}
             {students.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-500">
+                <td colSpan={8} className="py-8 text-center text-gray-500">
                   No students found.
                 </td>
               </tr>

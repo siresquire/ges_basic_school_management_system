@@ -213,3 +213,111 @@ export async function bulkGenerateParentLogins(): Promise<Buffer> {
 
   return Buffer.from(await wb.xlsx.writeBuffer());
 }
+
+// ── Export current temp passwords (all users who still have one set) ─────────
+
+export async function exportCurrentStaffPasswords(): Promise<Buffer> {
+  const teachers = await prisma.teacher.findMany({
+    where: { user: { tempPassword: { not: null } } },
+    include: { user: { select: { username: true, tempPassword: true } } },
+    orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Staff Passwords");
+  ws.columns = [
+    { header: "Staff ID", key: "staffId", width: 14 },
+    { header: "Full Name", key: "name", width: 30 },
+    { header: "Phone", key: "phone", width: 16 },
+    { header: "Username", key: "username", width: 22 },
+    { header: "Temp Password", key: "password", width: 16 },
+  ];
+  styleHeader(ws);
+  if (teachers.length === 0) {
+    ws.addRow({ staffId: "—", name: "No temp passwords currently set", phone: "—", username: "—", password: "—" });
+  } else {
+    teachers.forEach((t) =>
+      ws.addRow({
+        staffId: t.staffId ?? "—",
+        name: `${t.firstName} ${t.lastName}`,
+        phone: t.phone ?? "—",
+        username: t.user!.username,
+        password: t.user!.tempPassword!,
+      })
+    );
+  }
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+export async function exportCurrentStudentPasswords(): Promise<Buffer> {
+  const students = await prisma.student.findMany({
+    where: { user: { tempPassword: { not: null } } },
+    include: {
+      classGroup: { select: { name: true } },
+      user: { select: { username: true, tempPassword: true } },
+    },
+    orderBy: [{ classGroup: { level: "asc" } }, { lastName: "asc" }],
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Student Passwords");
+  ws.columns = [
+    { header: "Admission No", key: "admissionNo", width: 16 },
+    { header: "Full Name", key: "name", width: 30 },
+    { header: "Class", key: "className", width: 14 },
+    { header: "Username", key: "username", width: 22 },
+    { header: "Temp Password", key: "password", width: 16 },
+  ];
+  styleHeader(ws);
+  if (students.length === 0) {
+    ws.addRow({ admissionNo: "—", name: "No temp passwords currently set", className: "—", username: "—", password: "—" });
+  } else {
+    students.forEach((s) =>
+      ws.addRow({
+        admissionNo: s.admissionNo,
+        name: `${s.firstName} ${s.lastName}`,
+        className: s.classGroup?.name ?? "—",
+        username: s.user!.username,
+        password: s.user!.tempPassword!,
+      })
+    );
+  }
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+export async function exportCurrentParentPasswords(): Promise<Buffer> {
+  const students = await prisma.student.findMany({
+    where: { parentUser: { tempPassword: { not: null } } },
+    include: {
+      parentUser: { select: { username: true, name: true, tempPassword: true } },
+    },
+    orderBy: [{ lastName: "asc" }],
+  });
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Parent Passwords");
+  ws.columns = [
+    { header: "Guardian Name", key: "guardianName", width: 28 },
+    { header: "Student Name", key: "studentName", width: 28 },
+    { header: "Admission No", key: "admissionNo", width: 16 },
+    { header: "Phone", key: "phone", width: 16 },
+    { header: "Username", key: "username", width: 22 },
+    { header: "Temp Password", key: "password", width: 16 },
+  ];
+  styleHeader(ws);
+  if (students.length === 0) {
+    ws.addRow({ guardianName: "—", studentName: "No temp passwords currently set", admissionNo: "—", phone: "—", username: "—", password: "—" });
+  } else {
+    students.forEach((s) =>
+      ws.addRow({
+        guardianName: s.parentUser!.name,
+        studentName: `${s.firstName} ${s.lastName}`,
+        admissionNo: s.admissionNo,
+        phone: s.guardianPhone ?? "—",
+        username: s.parentUser!.username,
+        password: s.parentUser!.tempPassword!,
+      })
+    );
+  }
+  return Buffer.from(await wb.xlsx.writeBuffer());
+}

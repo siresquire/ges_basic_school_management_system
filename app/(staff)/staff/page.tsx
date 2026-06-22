@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { getAdminLevels } from "@/lib/admin-scope";
 import Icon from "@/components/icon";
+import { TempPasswordCell } from "@/components/temp-password-cell";
 
 export const metadata = { title: "Staff" };
 
@@ -33,6 +34,7 @@ export default async function StaffPage() {
   });
 
   const noLoginCount = teachers.filter((t) => !t.user).length;
+  const hasTempPasswords = teachers.some((t) => t.user?.tempPassword);
 
   return (
     <div className="space-y-4">
@@ -43,6 +45,12 @@ export default async function StaffPage() {
             <a href="/staff/bulk-logins" className="btn-secondary flex items-center gap-1.5">
               <Icon name="excel" />
               Generate logins ({noLoginCount})
+            </a>
+          )}
+          {hasTempPasswords && (
+            <a href="/staff/current-passwords" className="btn-secondary flex items-center gap-1.5">
+              <Icon name="excel" />
+              Download passwords
             </a>
           )}
           <Link href="/excel" className="btn-secondary">
@@ -66,6 +74,7 @@ export default async function StaffPage() {
               <th>Class teacher of</th>
               <th>Subjects</th>
               <th>Login</th>
+              <th>Temp password</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -83,13 +92,18 @@ export default async function StaffPage() {
                 <td>{t._count.assignments}</td>
                 <td className="font-mono text-xs">{t.user?.username ?? "—"}</td>
                 <td>
+                  {t.user?.tempPassword
+                    ? <TempPasswordCell password={t.user.tempPassword} />
+                    : <span className="text-gray-300">—</span>}
+                </td>
+                <td>
                   <span className={t.status === "ACTIVE" ? "badge-green" : "badge-gray"}>{t.status}</span>
                 </td>
               </tr>
             ))}
             {teachers.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500">
+                <td colSpan={8} className="py-8 text-center text-gray-500">
                   No teachers yet.
                 </td>
               </tr>
