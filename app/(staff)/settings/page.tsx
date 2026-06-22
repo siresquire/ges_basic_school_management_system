@@ -117,6 +117,10 @@ export default async function SettingsPage({
   const STAGE_OPTIONS = adminLevels
     ? ALL_STAGE_OPTIONS.filter((o) => adminLevels.includes(o.value))
     : ALL_STAGE_OPTIONS;
+  // Subjects visible to this admin — only those assigned to at least one of their levels.
+  const visibleSubjects = adminLevels
+    ? subjects.filter((s) => s.stages.split(",").some((st) => adminLevels.includes(st)))
+    : subjects;
 
   return (
     <div className="space-y-6">
@@ -441,7 +445,7 @@ export default async function SettingsPage({
             </tr>
           </thead>
           <tbody>
-            {subjects.map((s) => {
+            {visibleSubjects.map((s) => {
               const stages = s.stages.split(",");
               return (
                 <tr key={s.id}>

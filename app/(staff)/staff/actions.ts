@@ -66,6 +66,8 @@ function teacherDataFrom(formData: FormData) {
     ec1Name: str("ec1Name"), ec1Phone: str("ec1Phone"), ec1Relation: str("ec1Relation"),
     ec2Name: str("ec2Name"), ec2Phone: str("ec2Phone"), ec2Relation: str("ec2Relation"),
     ec3Name: str("ec3Name"), ec3Phone: str("ec3Phone"), ec3Relation: str("ec3Relation"),
+    // Levels
+    levels: formData.getAll("levels").map(String).filter(Boolean).join(","),
   };
 }
 

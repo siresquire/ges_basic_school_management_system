@@ -113,6 +113,10 @@ model Teacher {
   ec3Phone               String?
   ec3Relation            String?
 
+  // Comma-separated stages this teacher operates at, e.g. "PRIMARY,JHS".
+  // Empty = not yet classified; shown to all admins until assigned.
+  levels                 String  @default("")
+
   classTeacherOf ClassGroup[]
   assignments    SubjectAssignment[]
   timetableSlots TimetableSlot[]

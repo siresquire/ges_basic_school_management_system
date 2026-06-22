@@ -10,6 +10,13 @@ const REGIONS = [
 
 const QUAL_OPTIONS = ["Certificate", "Diploma", "First Degree", "Masters", "PhD"];
 
+const LEVEL_OPTIONS = [
+  { value: "CRECHE", label: "Creche" },
+  { value: "KG", label: "KG" },
+  { value: "PRIMARY", label: "Primary" },
+  { value: "JHS", label: "JHS" },
+];
+
 const GES_RANKS = [
   "Director General",
   "Deputy Director General",
@@ -105,6 +112,28 @@ export default function TeacherForm({
             </select>
           </Field>
         )}
+        <Field label="Level(s) taught" span>
+          <div className="flex flex-wrap gap-5 pt-1">
+            {LEVEL_OPTIONS.map((o) => {
+              const assigned = (teacher?.levels ?? "").split(",");
+              return (
+                <label key={o.value} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="levels"
+                    value={o.value}
+                    defaultChecked={assigned.includes(o.value)}
+                    className="h-4 w-4 accent-emerald-700"
+                  />
+                  {o.label}
+                </label>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 text-xs text-gray-400">
+            Select all sections this teacher works in. Admins only see staff assigned to their section.
+          </p>
+        </Field>
       </Section>
 
       {/* ── Personal ── */}

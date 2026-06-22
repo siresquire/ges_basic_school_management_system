@@ -1,14 +1,29 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { getAdminLevels } from "@/lib/admin-scope";
 import Icon from "@/components/icon";
 
 export const metadata = { title: "Staff" };
 
 export default async function StaffPage() {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const adminLevels = await getAdminLevels(session);
+
+  // Level-restricted admins see only teachers assigned to their levels.
+  // Teachers with no levels set (levels = "") are visible to everyone — they
+  // haven't been classified yet.
+  const levelWhere = adminLevels
+    ? {
+        OR: [
+          { levels: "" },
+          ...adminLevels.map((l) => ({ levels: { contains: l } })),
+        ],
+      }
+    : {};
 
   const teachers = await prisma.teacher.findMany({
+    where: levelWhere,
     orderBy: [{ status: "asc" }, { lastName: "asc" }],
     include: {
       user: true,

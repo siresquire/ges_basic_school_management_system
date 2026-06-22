@@ -241,12 +241,27 @@ export async function updateSubject(subjectId: string, formData: FormData) {
 /**
  * A subject with recorded scores can't be deleted (old report cards are built
  * from them) — untick all its stages instead to retire it from new score entry.
+ * Level-restricted admins only remove their own stages; full delete only happens
+ * when no stages from other levels remain.
  */
 export async function deleteSubject(subjectId: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
+  const adminLevels = await getAdminLevels(session);
 
   const scoreCount = await prisma.score.count({ where: { subjectId } });
   if (scoreCount > 0) redirect("/settings?error=subjectscores");
+
+  if (adminLevels) {
+    const subject = await prisma.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { stages: true } });
+    const remaining = subject.stages.split(",").filter((s) => s && !adminLevels.includes(s));
+    if (remaining.length > 0) {
+      // Subject belongs to other levels too — strip only this admin's stages.
+      await prisma.subject.update({ where: { id: subjectId }, data: { stages: remaining.join(",") } });
+      revalidatePath("/settings");
+      redirect("/settings?saved=subjectdeleted");
+    }
+    // Falls through: subject is entirely within this admin's levels — fully delete below.
+  }
 
   await prisma.$transaction([
     prisma.subjectAssignment.deleteMany({ where: { subjectId } }),
