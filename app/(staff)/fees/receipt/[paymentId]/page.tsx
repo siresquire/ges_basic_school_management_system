@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { ghs, fmtDate, fullName } from "@/lib/format";
+import { ghs, fmtDate, studentName } from "@/lib/format";
 import { cedisInWords } from "@/lib/words";
 import { dataUrl, getSingletonImage } from "@/lib/images";
 import PrintButton from "@/components/print-button";
@@ -67,7 +67,7 @@ export default async function ReceiptPage({
         <div className="mt-4 space-y-2 leading-relaxed">
           <p>
             <span className="font-semibold">Received from: </span>
-            {fullName(payment.student)} ({payment.student.admissionNo},{" "}
+            {studentName(payment.student)} ({payment.student.admissionNo},{" "}
             {payment.student.classGroup?.name ?? "no class"})
           </p>
           <p>

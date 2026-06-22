@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 
 export type FeeRow = {
   studentId: string;
@@ -47,7 +47,7 @@ export async function getTermFeeOverview(termId: string) {
     const paid = paidByStudent.get(s.id) ?? 0;
     return {
       studentId: s.id,
-      name: fullName(s),
+      name: studentName(s),
       admissionNo: s.admissionNo,
       className: s.classGroup?.name ?? "—",
       billed,

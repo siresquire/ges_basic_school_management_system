@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { fmtDateLong, fullName, todayISO } from "@/lib/format";
+import { fmtDateLong, studentName, todayISO } from "@/lib/format";
 import { getGradeBands, gradeFor, totalScore, sectionForStage } from "@/lib/grading";
 import { dataUrl, getSingletonImage } from "@/lib/images";
 import PrintButton from "@/components/print-button";
@@ -136,7 +136,7 @@ export default async function TranscriptPage({ params }: { params: Promise<{ id:
         </Link>
         <div className="flex gap-2">
           <PrintButton label="Print" />
-          <DownloadPdfButton filename={`Transcript — ${fullName(student)}`} />
+          <DownloadPdfButton filename={`Transcript — ${studentName(student)}`} />
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export default async function TranscriptPage({ params }: { params: Promise<{ id:
 
         {/* Student details */}
         <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-          <p><span className="font-semibold">Name: </span>{fullName(student)}</p>
+          <p><span className="font-semibold">Name: </span>{studentName(student)}</p>
           <p><span className="font-semibold">Admission No.: </span>{student.admissionNo}</p>
           <p><span className="font-semibold">Gender: </span>{student.gender === "F" ? "Female" : "Male"}</p>
           <p>

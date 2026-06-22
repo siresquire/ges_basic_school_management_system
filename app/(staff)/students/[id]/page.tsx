@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fmtDate, fullName } from "@/lib/format";
+import { fmtDate, studentName } from "@/lib/format";
 import { getTeacherScope, canTeach, canAdminister } from "@/lib/teacher-scope";
 import StudentForm from "@/components/student-form";
 import ParentSearchInput from "@/components/parent-search-input";
@@ -47,7 +47,7 @@ export default async function StudentPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/students" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">← Students</Link>
-          <h1 className="page-title">{fullName(student)}</h1>
+          <h1 className="page-title">{studentName(student)}</h1>
           <p className="mt-1 text-sm text-gray-500">
             {student.admissionNo} · {student.classGroup?.name ?? "No class"} ·{" "}
             <span

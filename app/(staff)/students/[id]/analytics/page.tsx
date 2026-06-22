@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 import { getStudentAnalytics } from "@/lib/analytics";
 import { getTeacherScope, canTeach } from "@/lib/teacher-scope";
 import { TrendChart, BarsChart, CHART_COLORS } from "@/components/charts";
@@ -34,7 +34,7 @@ export default async function StudentAnalyticsPage({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="page-title">Analytics — {fullName(student)}</h1>
+          <h1 className="page-title">Analytics — {studentName(student)}</h1>
           <p className="mt-1 text-sm text-gray-500">
             {student.admissionNo} · {student.classGroup?.name ?? "No class"} · trends across every
             recorded term

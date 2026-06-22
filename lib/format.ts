@@ -46,3 +46,8 @@ export const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 export function fullName(p: { firstName: string; lastName: string; otherNames?: string | null }) {
   return [p.firstName, p.otherNames, p.lastName].filter(Boolean).join(" ");
 }
+
+/** Surname-first format for students: LASTNAME FIRSTNAME OTHERNAME */
+export function studentName(p: { firstName: string; lastName: string; otherNames?: string | null }) {
+  return [p.lastName, p.firstName, p.otherNames].filter(Boolean).join(" ");
+}

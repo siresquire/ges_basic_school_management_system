@@ -114,7 +114,7 @@ export async function bulkGenerateStudentLogins(): Promise<Buffer> {
     const user = await prisma.user.create({
       data: {
         username,
-        name: `${s.firstName} ${s.lastName}`,
+        name: `${s.lastName} ${s.firstName}${s.otherNames ? " " + s.otherNames : ""}`,
         passwordHash: bcrypt.hashSync(password, 10),
         role: "STUDENT",
         tempPassword: password,
@@ -124,7 +124,7 @@ export async function bulkGenerateStudentLogins(): Promise<Buffer> {
 
     rows.push({
       admissionNo: s.admissionNo,
-      name: `${s.firstName} ${s.lastName}`,
+      name: `${s.lastName} ${s.firstName}${s.otherNames ? " " + s.otherNames : ""}`,
       className: s.classGroup?.name ?? "—",
       username,
       password,
@@ -187,7 +187,7 @@ export async function bulkGenerateParentLogins(): Promise<Buffer> {
 
     rows.push({
       guardianName,
-      studentName: `${s.firstName} ${s.lastName}`,
+      studentName: `${s.lastName} ${s.firstName}${s.otherNames ? " " + s.otherNames : ""}`,
       admissionNo: s.admissionNo,
       phone: s.guardianPhone ?? "—",
       username,
@@ -275,7 +275,7 @@ export async function exportCurrentStudentPasswords(): Promise<Buffer> {
     students.forEach((s) =>
       ws.addRow({
         admissionNo: s.admissionNo,
-        name: `${s.firstName} ${s.lastName}`,
+        name: `${s.lastName} ${s.firstName}${s.otherNames ? " " + s.otherNames : ""}`,
         className: s.classGroup?.name ?? "—",
         username: s.user!.username,
         password: s.user!.tempPassword!,
@@ -311,7 +311,7 @@ export async function exportCurrentParentPasswords(): Promise<Buffer> {
     students.forEach((s) =>
       ws.addRow({
         guardianName: s.parentUser!.name,
-        studentName: `${s.firstName} ${s.lastName}`,
+        studentName: `${s.lastName} ${s.firstName}${s.otherNames ? " " + s.otherNames : ""}`,
         admissionNo: s.admissionNo,
         phone: s.guardianPhone ?? "—",
         username: s.parentUser!.username,

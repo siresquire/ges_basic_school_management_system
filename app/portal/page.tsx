@@ -4,7 +4,7 @@ import { requirePortal } from "@/lib/auth";
 import { getPortalStudents } from "@/lib/portal";
 import { getClassReportData } from "@/lib/reports";
 import { billedAmount } from "@/lib/fees";
-import { ghs, fullName, PERIODS, WEEKDAYS } from "@/lib/format";
+import { ghs, fullName, studentName, PERIODS, WEEKDAYS } from "@/lib/format";
 import FilterForm from "@/components/filter-form";
 import { CopyButton } from "@/components/copy-button";
 
@@ -92,7 +92,7 @@ export default async function PortalPage({
       {/* Child switcher + term selector */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="page-title">{fullName(student)}</h1>
+          <h1 className="page-title">{studentName(student)}</h1>
           <p className="mt-1 text-sm text-gray-500">
             {student.admissionNo} · {student.classGroup?.name ?? "No class assigned"}
             {term ? ` · ${term.academicYear.name} ${term.name}` : ""}

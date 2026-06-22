@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fullName, fmtDate } from "@/lib/format";
+import { studentName, fmtDate } from "@/lib/format";
 import { getGradeBands, sectionForStage } from "@/lib/grading";
 import { getEnabledClassList, getTermList, getCurrentTerm } from "@/lib/cached";
 import { getTeacherScope, filterClasses, allowedSubjectIds } from "@/lib/teacher-scope";
@@ -75,7 +75,7 @@ export default async function ScoresPage({
       sc && !hasCw && sc.classScore != null ? Math.round((sc.classScore / 100) * 60 * 10) / 10 : null;
     return {
       studentId: s.id,
-      name: fullName(s),
+      name: studentName(s),
       cw1: hasCw ? sc!.cw1 : legacyCw1,
       cw2: hasCw ? sc!.cw2 : null,
       cw3: hasCw ? sc!.cw3 : null,

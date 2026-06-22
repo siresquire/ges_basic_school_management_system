@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
-import { ghs, fmtDate, fullName } from "@/lib/format";
+import { ghs, fmtDate, studentName } from "@/lib/format";
 import { billedAmount } from "@/lib/fees";
 import FilterForm from "@/components/filter-form";
 
@@ -56,7 +56,7 @@ export default async function FeeStatementPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/fees" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700">← Fees</Link>
-          <h1 className="page-title">Fee statement — {fullName(student)}</h1>
+          <h1 className="page-title">Fee statement — {studentName(student)}</h1>
           <p className="mt-1 text-sm text-gray-500">
             {student.admissionNo} · {student.classGroup?.name ?? "No class"} ·{" "}
             {term.academicYear.name} {term.name}

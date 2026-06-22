@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireStaff, homeFor } from "@/lib/auth";
 import { getTeacherScope, canTeach, allowedSubjectIds } from "@/lib/teacher-scope";
 import { classWorkTotal, classWorkToScore, CLASSWORK_MAX } from "@/lib/grading";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 import { log } from "@/lib/activity";
 
 /** Parse a class-work cell: 0..60, blank → null. */
@@ -112,11 +112,11 @@ export async function saveScores(
     const cwTotal = classWorkTotal([cw1, cw2, cw3, cw4]);
 
     if (cwTotal != null && cwTotal > CLASSWORK_MAX) {
-      invalid.push(`${fullName(student)} (class work total ${cwTotal} is above ${CLASSWORK_MAX})`);
+      invalid.push(`${studentName(student)} (class work total ${cwTotal} is above ${CLASSWORK_MAX})`);
       continue;
     }
     if (examScore != null && examScore > 100) {
-      invalid.push(`${fullName(student)} (exam score ${examScore} is above 100)`);
+      invalid.push(`${studentName(student)} (exam score ${examScore} is above 100)`);
       continue;
     }
     const classScore = classWorkToScore(cwTotal);
@@ -130,7 +130,7 @@ export async function saveScores(
 
     if (prior && prior.updatedAt > loadedAt) {
       conflicts.push({
-        pupil: fullName(student),
+        pupil: studentName(student),
         by: prior.recordedBy ?? "someone else",
         when: fmtWhen(prior.updatedAt),
         theirs: fmtScore(prior.classScore, prior.examScore),

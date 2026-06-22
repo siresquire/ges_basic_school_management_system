@@ -8,7 +8,7 @@ import {
   autoTeacherRemark,
   autoHeadRemark,
 } from "@/lib/grading";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 import { dataUrl, getSingletonImage } from "@/lib/images";
 import { classTeacherTitle } from "@/lib/teacher-scope";
 import { getAttendanceForClass } from "@/lib/attendance";
@@ -144,7 +144,7 @@ export async function getClassReportData(
 
     return {
       studentId: student.id,
-      name: fullName(student),
+      name: studentName(student),
       admissionNo: student.admissionNo,
       gender: student.gender,
       rows,

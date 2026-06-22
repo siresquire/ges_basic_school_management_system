@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fullName, todayISO, dateFromISO, fmtDate } from "@/lib/format";
+import { studentName, todayISO, dateFromISO, fmtDate } from "@/lib/format";
 import { getEnabledClassList, getTermList, getCurrentTerm } from "@/lib/cached";
 import { getTeacherScope, canAdminister } from "@/lib/teacher-scope";
 import { getAdminLevels } from "@/lib/admin-scope";
@@ -125,7 +125,7 @@ async function TermMode({
     const t = byStudent.get(s.id);
     return {
       studentId: s.id,
-      name: fullName(s),
+      name: studentName(s),
       daysPresent: t?.daysPresent ?? null,
       recordedBy: t?.recordedBy ?? null,
       lastSaved: t ? fmtDate(t.updatedAt) : null,
@@ -286,7 +286,7 @@ async function DailyMode({
                 return (
                   <tr key={s.id}>
                     <td>{i + 1}</td>
-                    <td className="font-medium whitespace-nowrap">{fullName(s)}</td>
+                    <td className="font-medium whitespace-nowrap">{studentName(s)}</td>
                     {OPTIONS.map((o) => (
                       <td key={o.value} className="text-center">
                         <input
@@ -295,7 +295,7 @@ async function DailyMode({
                           value={o.value}
                           defaultChecked={current === o.value}
                           className="h-4 w-4 accent-emerald-700"
-                          aria-label={`${fullName(s)} ${o.label}`}
+                          aria-label={`${studentName(s)} ${o.label}`}
                         />
                       </td>
                     ))}

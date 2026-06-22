@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 import { getEnabledClassList } from "@/lib/cached";
 import { getTeacherScope, filterClasses } from "@/lib/teacher-scope";
-import { getAdminLevels, levelStageFilter, classStageFilter } from "@/lib/admin-scope";
+import { getAdminLevels, levelStageFilter } from "@/lib/admin-scope";
 import FilterForm from "@/components/filter-form";
 import Icon from "@/components/icon";
 import { TempPasswordCell } from "@/components/temp-password-cell";
@@ -12,13 +12,22 @@ import { DownloadButton } from "@/components/download-button";
 
 export const metadata = { title: "Students" };
 
+const PER_PAGE = 25;
+
 export default async function StudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; class?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; class?: string; status?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const session = await requireStaff();
-  const { q = "", class: rawClassId = "", status = "ACTIVE" } = await searchParams;
+  const {
+    q = "",
+    class: rawClassId = "",
+    status = "ACTIVE",
+    page: rawPage = "1",
+    sort = "",
+    dir = "asc",
+  } = await searchParams;
 
   const [scope, adminLevels] = await Promise.all([
     getTeacherScope(session),
@@ -26,9 +35,12 @@ export default async function StudentsPage({
   ]);
   const classId = scope.isAdmin || scope.taughtClassIds.includes(rawClassId) ? rawClassId : "";
 
+  const page = Math.max(1, parseInt(rawPage, 10) || 1);
+  const skip = (page - 1) * PER_PAGE;
+  const sortDir = (dir === "desc" ? "desc" : "asc") as "asc" | "desc";
+
   const where = {
     ...(status ? { status } : {}),
-    // Admin level restriction (restricts to assigned school levels)
     ...levelStageFilter(adminLevels),
     ...(classId
       ? { classGroupId: classId }
@@ -47,6 +59,11 @@ export default async function StudentsPage({
       : {}),
   };
 
+  const orderBy =
+    sort === "gender"
+      ? ([{ gender: sortDir }, { classGroup: { level: "asc" } }, { lastName: "asc" }] as const)
+      : ([{ classGroup: { level: "asc" } }, { lastName: "asc" }] as const);
+
   const [students, allClasses, total, noStudentLogin, noParentLogin] = await Promise.all([
     prisma.student.findMany({
       where,
@@ -55,21 +72,33 @@ export default async function StudentsPage({
         user: { select: { tempPassword: true } },
         parentUser: { select: { tempPassword: true } },
       },
-      orderBy: [{ classGroup: { level: "asc" } }, { lastName: "asc" }],
-      take: 400,
+      orderBy,
+      take: PER_PAGE,
+      skip,
     }),
     getEnabledClassList(),
     prisma.student.count({ where }),
     scope.isAdmin ? prisma.student.count({ where: { userId: null, status: "ACTIVE" } }) : Promise.resolve(0),
     scope.isAdmin ? prisma.student.count({ where: { parentUserId: null, status: "ACTIVE", guardianName: { not: null } } }) : Promise.resolve(0),
   ]);
+
   const hasStudentTempPasswords = students.some((s) => s.user?.tempPassword);
   const hasParentTempPasswords = students.some((s) => s.parentUser?.tempPassword);
 
-  // Filter class list by both teacher scope and admin levels
   const classes = filterClasses(scope, adminLevels
     ? allClasses.filter((c) => adminLevels.includes(c.stage))
     : allClasses);
+
+  const totalPages = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  // Build href that preserves all current filters while overriding specific params
+  const makeHref = (overrides: Record<string, string>) => {
+    const p = new URLSearchParams({ q, class: classId, status, sort, dir, page: rawPage, ...overrides });
+    return `?${p.toString()}`;
+  };
+
+  const genderSortDir = sort === "gender" && dir === "asc" ? "desc" : "asc";
+  const genderHref = makeHref({ sort: "gender", dir: genderSortDir, page: "1" });
 
   return (
     <div className="space-y-4">
@@ -114,6 +143,9 @@ export default async function StudentsPage({
       </div>
 
       <FilterForm className="card flex flex-wrap items-end gap-3 p-4">
+        {/* preserve sort/dir through filter changes */}
+        <input type="hidden" name="sort" value={sort} />
+        <input type="hidden" name="dir" value={dir} />
         <div className="min-w-40 flex-1">
           <label className="label">Search</label>
           <input name="q" className="input" defaultValue={q} placeholder="Name or admission number" />
@@ -148,7 +180,14 @@ export default async function StudentsPage({
             <tr>
               <th>Admission No.</th>
               <th>Name</th>
-              <th>Gender</th>
+              <th>
+                <Link href={genderHref} className="inline-flex items-center gap-1 hover:text-emerald-700">
+                  Gender
+                  {sort === "gender" && (
+                    <span className="text-emerald-600">{dir === "asc" ? " ↑" : " ↓"}</span>
+                  )}
+                </Link>
+              </th>
               <th>Class</th>
               <th>Guardian phone</th>
               <th>Student pwd</th>
@@ -162,7 +201,7 @@ export default async function StudentsPage({
                 <td className="font-mono text-xs">{s.admissionNo}</td>
                 <td>
                   <Link href={`/students/${s.id}`} className="font-medium text-emerald-700 hover:underline">
-                    {fullName(s)}
+                    {studentName(s)}
                   </Link>
                 </td>
                 <td>{s.gender === "F" ? "Female" : "Male"}</td>
@@ -193,9 +232,33 @@ export default async function StudentsPage({
           </tbody>
         </table>
       </div>
-      <p className="text-xs text-gray-500">
-        {total} student{total === 1 ? "" : "s"} match{total === 1 ? "es" : ""} the filter.
-      </p>
+
+      {/* Pagination footer */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+        <span>
+          {total} student{total === 1 ? "" : "s"}
+          {total > PER_PAGE && ` — page ${page} of ${totalPages}`}
+        </span>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <Link
+              href={makeHref({ page: String(page - 1) })}
+              aria-disabled={page <= 1}
+              className={`rounded px-2 py-1 hover:bg-gray-100 ${page <= 1 ? "pointer-events-none opacity-40" : ""}`}
+            >
+              ‹ Prev
+            </Link>
+            <span className="px-1">{page} / {totalPages}</span>
+            <Link
+              href={makeHref({ page: String(page + 1) })}
+              aria-disabled={page >= totalPages}
+              className={`rounded px-2 py-1 hover:bg-gray-100 ${page >= totalPages ? "pointer-events-none opacity-40" : ""}`}
+            >
+              Next ›
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

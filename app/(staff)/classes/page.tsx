@@ -56,7 +56,13 @@ export default async function ClassesPage({
     getEnabledLevels(),
   ]);
   const allowedStages = adminLevels ?? enabledLevels;
-  const classes = filterClasses(scope, allClasses).filter((c) => allowedStages.includes(c.stage));
+  const STAGE_ORDER: Record<string, number> = { CRECHE: 0, KG: 1, PRIMARY: 2, JHS: 3 };
+  const classes = filterClasses(scope, allClasses)
+    .filter((c) => allowedStages.includes(c.stage))
+    .sort((a, b) => {
+      const sd = (STAGE_ORDER[a.stage] ?? 9) - (STAGE_ORDER[b.stage] ?? 9);
+      return sd !== 0 ? sd : a.level - b.level;
+    });
 
   return (
     <div className="space-y-4">

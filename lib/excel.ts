@@ -11,7 +11,7 @@
 import ExcelJS from "exceljs";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
-import { fullName } from "./format";
+import { studentName } from "./format";
 import { genPassword, uniqueUsername } from "./passwords";
 
 export type ImportResult = {
@@ -245,7 +245,7 @@ export async function importStudentsFromBuffer(
     const existing = await prisma.student.findUnique({ where: { admissionNo } });
     if (existing) {
       skipped++;
-      details.push(`Row ${r}: ${admissionNo} already exists (${fullName(existing)}) — skipped.`);
+      details.push(`Row ${r}: ${admissionNo} already exists (${studentName(existing)}) — skipped.`);
       continue;
     }
 
@@ -461,7 +461,7 @@ export async function buildScoreWorkbook(
       const r = i + 2;
       const prior = existingMap.get(`${st.id}|${subject.id}`);
       ws.getCell(r, 1).value = st.admissionNo;
-      ws.getCell(r, 2).value = fullName(st);
+      ws.getCell(r, 2).value = studentName(st);
       // Pre-fill the four class works exactly as last saved. For scores saved
       // before class works were tracked individually, fall back to showing the
       // combined class score (/100 → /60) as a single CW entry.
@@ -665,12 +665,12 @@ export async function importScoresFromBuffer(
       const cwTotal = cw.reduce((a, b) => a + b, 0);
       if (cwTotal > 60) {
         details.push(
-          `${sheet} row ${r} (${fullName(student)}): class work total ${cwTotal} is over 60 — skipped.`
+          `${sheet} row ${r} (${studentName(student)}): class work total ${cwTotal} is over 60 — skipped.`
         );
         continue;
       }
       if (exam != null && (exam < 0 || exam > 100)) {
-        details.push(`${sheet} row ${r} (${fullName(student)}): exam score ${exam} is not 0–100 — skipped.`);
+        details.push(`${sheet} row ${r} (${studentName(student)}): exam score ${exam} is not 0–100 — skipped.`);
         continue;
       }
 
@@ -682,7 +682,7 @@ export async function importScoresFromBuffer(
       }
       if (prior && prior.updatedAt > downloadedAt) {
         conflicts.push(
-          `${subject.name} — ${fullName(student)}: changed by ${prior.recordedBy ?? "someone else"} after this file was downloaded. In the system now: ${fmtScorePair(prior.classScore, prior.examScore)}; in your file: ${fmtScorePair(classScore, exam)}.`
+          `${subject.name} — ${studentName(student)}: changed by ${prior.recordedBy ?? "someone else"} after this file was downloaded. In the system now: ${fmtScorePair(prior.classScore, prior.examScore)}; in your file: ${fmtScorePair(classScore, exam)}.`
         );
       }
       writes.push({
@@ -798,7 +798,7 @@ export async function buildAttendanceTemplate(
   students.forEach((st, i) => {
     const r = i + 4;
     ws.getCell(r, 1).value = st.admissionNo;
-    ws.getCell(r, 2).value = fullName(st);
+    ws.getCell(r, 2).value = studentName(st);
     const prior = existingMap.get(st.id);
     if (prior?.daysPresent != null) ws.getCell(r, 3).value = prior.daysPresent;
     const cell = ws.getCell(r, 3);
@@ -886,12 +886,12 @@ export async function importAttendanceFromBuffer(
     const daysPresent = numVal(ws.getCell(r, 3).value);
     if (daysPresent == null) continue;
     if (daysPresent < 0) {
-      details.push(`Row ${r} (${fullName(student)}): days present cannot be negative — skipped.`);
+      details.push(`Row ${r} (${studentName(student)}): days present cannot be negative — skipped.`);
       continue;
     }
     if (daysTotal != null && daysPresent > daysTotal) {
       details.push(
-        `Row ${r} (${fullName(student)}): days present ${daysPresent} is more than the ${daysTotal} school days — skipped.`
+        `Row ${r} (${studentName(student)}): days present ${daysPresent} is more than the ${daysTotal} school days — skipped.`
       );
       continue;
     }

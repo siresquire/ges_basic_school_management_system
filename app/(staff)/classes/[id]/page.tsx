@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireStaff } from "@/lib/auth";
-import { fullName } from "@/lib/format";
+import { studentName } from "@/lib/format";
 import { getTeacherScope, canTeach } from "@/lib/teacher-scope";
 
 export const metadata = { title: "Class" };
@@ -69,7 +69,7 @@ export default async function ClassPage({ params }: { params: Promise<{ id: stri
                   <td className="font-mono text-xs">{s.admissionNo}</td>
                   <td>
                     <Link href={`/students/${s.id}`} className="font-medium text-emerald-700 hover:underline">
-                      {fullName(s)}
+                      {studentName(s)}
                     </Link>
                   </td>
                   <td>{s.gender === "F" ? "Female" : "Male"}</td>

@@ -44,6 +44,11 @@ export default async function DashboardPage() {
     prisma.teacher.count({ where: { status: "ACTIVE", ...teacherLevelWhere } }),
   ]);
 
+  const STAGE_ORDER: Record<string, number> = { CRECHE: 0, KG: 1, PRIMARY: 2, JHS: 3 };
+  const sortedClasses = classes.slice().sort((a, b) => {
+    const sd = (STAGE_ORDER[a.stage] ?? 9) - (STAGE_ORDER[b.stage] ?? 9);
+    return sd !== 0 ? sd : a.level - b.level;
+  });
   const classIds = classes.map((c) => c.id);
   const attClassWhere = scope.isAdmin && !adminLevels
     ? { date: today }
@@ -129,7 +134,7 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {classes.map((c) => (
+                {sortedClasses.map((c) => (
                   <tr key={c.id}>
                     <td>
                       <Link href={`/classes/${c.id}`} className="font-medium text-emerald-700 hover:underline">
