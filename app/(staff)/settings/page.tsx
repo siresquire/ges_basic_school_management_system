@@ -77,7 +77,9 @@ export default async function SettingsPage({
       orderBy: { name: "desc" },
     }),
     prisma.user.findMany({
-      where: session.role === "SUPER_ADMIN" ? {} : { role: { not: "SUPER_ADMIN" } },
+      where: session.role === "SUPER_ADMIN"
+        ? {}
+        : { role: { notIn: ["SUPER_ADMIN", "ADMIN"] } },
       include: { teacher: { select: { levels: true } } },
       orderBy: [{ role: "asc" }, { username: "asc" }],
     }),

@@ -302,7 +302,7 @@ export async function createAdminUser(formData: FormData) {
 export async function adminResetPassword(userId: string, formData: FormData) {
   const session = await requireAdmin();
   const target = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (target.role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
+  if ((target.role === "SUPER_ADMIN" || target.role === "ADMIN") && session.role !== "SUPER_ADMIN") {
     redirect("/settings?error=protected");
   }
   const password = String(formData.get("password") ?? "");
@@ -319,7 +319,7 @@ export async function toggleUserActive(userId: string) {
   const session = await requireAdmin();
   if (session.userId === userId) redirect("/settings?error=self");
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (user.role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
+  if ((user.role === "SUPER_ADMIN" || user.role === "ADMIN") && session.role !== "SUPER_ADMIN") {
     redirect("/settings?error=protected");
   }
   const nextActive = !user.active;
