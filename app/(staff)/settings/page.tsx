@@ -13,8 +13,6 @@ import {
   updateSubject,
   deleteSubject,
   createAdminUser,
-  adminResetPassword,
-  toggleUserActive,
   uploadLogo,
   removeLogo,
   uploadHeadSignature,
@@ -23,7 +21,7 @@ import {
 } from "./actions";
 import { ShowToast } from "@/components/show-toast";
 import { PasswordInput } from "@/components/password-input";
-import { TempPasswordBadge } from "@/components/temp-password-badge";
+import { AccountsTable, type AccountRow } from "@/components/accounts-table";
 
 export const metadata = { title: "Settings" };
 
@@ -528,7 +526,7 @@ export default async function SettingsPage({
       </div>
 
       {/* User accounts */}
-      <div className="card overflow-x-auto">
+      <div className="card" id="login-accounts">
         <div className="border-b border-gray-200 px-5 py-4">
           <h2 className="font-semibold text-gray-900">Login accounts</h2>
           <p className="mt-0.5 text-xs text-gray-500">
@@ -536,60 +534,18 @@ export default async function SettingsPage({
             created from each student&apos;s page.
           </p>
         </div>
-        <table className="tbl">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Reset password</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u) => {
-              const isSuperAdmin = u.role === "SUPER_ADMIN";
-              const viewerCanManage = !isSuperAdmin || session.role === "SUPER_ADMIN";
-              return (
-                <tr key={u.id}>
-                  <td className="font-mono text-xs">{u.username}</td>
-                  <td>{u.name}</td>
-                  <td>
-                    <span className={isSuperAdmin ? "badge-purple" : "badge-gray"}>{u.role}</span>
-                  </td>
-                  <td>
-                    <span className={u.active ? "badge-green" : "badge-red"}>
-                      {u.active ? "Active" : "Disabled"}
-                    </span>
-                  </td>
-                  <td>
-                    {viewerCanManage ? (
-                      <>
-                        <form action={adminResetPassword.bind(null, u.id)} className="flex gap-2">
-                          <PasswordInput name="password" compact minLength={6} />
-                          <button className="btn-secondary btn-sm">Set</button>
-                        </form>
-                        {u.tempPassword && <TempPasswordBadge password={u.tempPassword} />}
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-400">Managed via System page</span>
-                    )}
-                  </td>
-                  <td className="text-right">
-                    {viewerCanManage && u.id !== session.userId && (
-                      <form action={toggleUserActive.bind(null, u.id)}>
-                        <button className="text-xs text-red-600 hover:underline cursor-pointer">
-                          {u.active ? "Deactivate" : "Reactivate"}
-                        </button>
-                      </form>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <AccountsTable
+          users={users.map((u): AccountRow => ({
+            id: u.id,
+            username: u.username,
+            name: u.name,
+            role: u.role,
+            active: u.active,
+            tempPassword: u.tempPassword ?? null,
+          }))}
+          sessionUserId={session.userId}
+          sessionRole={session.role}
+        />
         {session.role === "SUPER_ADMIN" && (
           <form action={createAdminUser} className="flex flex-wrap items-end gap-2 border-t border-gray-200 p-4">
             <p className="basis-full text-sm font-medium text-gray-800">

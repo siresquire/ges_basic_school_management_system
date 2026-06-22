@@ -7,15 +7,16 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff, homeFor } from "@/lib/auth";
 import { readImageFile } from "@/lib/images";
 import { log } from "@/lib/activity";
+import { genPassword, uniqueUsername } from "@/lib/passwords";
 
 function teacherDataFrom(formData: FormData) {
   const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
   const dt = (k: string) => { const v = str(k); return v ? new Date(`${v}T00:00:00.000Z`) : null; };
   const num = (k: string) => { const v = str(k); return v ? (parseInt(v, 10) || null) : null; };
   return {
-    firstName: String(formData.get("firstName") ?? "").trim(),
-    lastName: String(formData.get("lastName") ?? "").trim(),
-    otherNames: str("otherNames"),
+    firstName: String(formData.get("firstName") ?? "").trim().toUpperCase(),
+    lastName: String(formData.get("lastName") ?? "").trim().toUpperCase(),
+    otherNames: str("otherNames")?.toUpperCase() ?? null,
     gender: String(formData.get("gender") ?? "M"),
     phone: str("phone"),
     email: str("email"),
@@ -83,6 +84,24 @@ export async function createTeacher(formData: FormData) {
   }
 
   const teacher = await prisma.teacher.create({ data });
+
+  // Auto-create login with temp password so the teacher can log in immediately
+  const allUsernames = await prisma.user.findMany({ select: { username: true } });
+  const taken = new Set(allUsernames.map((u) => u.username));
+  const base = data.staffId ?? `${data.firstName}${data.lastName}`;
+  const username = uniqueUsername(base, taken);
+  const password = genPassword();
+  const autoUser = await prisma.user.create({
+    data: {
+      username,
+      name: `${data.firstName} ${data.lastName}`,
+      passwordHash: bcrypt.hashSync(password, 10),
+      role: "TEACHER",
+      tempPassword: password,
+    },
+  });
+  await prisma.teacher.update({ where: { id: teacher.id }, data: { userId: autoUser.id } });
+
   await log({ actorUserId: session.userId, actorName: session.name, action: "TEACHER_CREATE", detail: `Added teacher ${data.firstName} ${data.lastName}${data.staffId ? ` (ID: ${data.staffId})` : ""}` });
   revalidatePath("/staff");
   redirect(`/staff/${teacher.id}`);

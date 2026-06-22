@@ -7,14 +7,15 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff } from "@/lib/auth";
 import { log } from "@/lib/activity";
 import { parsePhone, parseGhanaCard, FieldError } from "@/lib/validate";
+import { genPassword, uniqueUsername } from "@/lib/passwords";
 
 function studentDataFrom(formData: FormData) {
   const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
   const dob = str("dateOfBirth");
   return {
-    firstName: String(formData.get("firstName") ?? "").trim(),
-    lastName: String(formData.get("lastName") ?? "").trim(),
-    otherNames: str("otherNames"),
+    firstName: String(formData.get("firstName") ?? "").trim().toUpperCase(),
+    lastName: String(formData.get("lastName") ?? "").trim().toUpperCase(),
+    otherNames: str("otherNames")?.toUpperCase() ?? null,
     gender: String(formData.get("gender") ?? "M"),
     dateOfBirth: dob ? new Date(`${dob}T00:00:00.000Z`) : null,
     classGroupId: str("classGroupId"),
@@ -91,6 +92,24 @@ export async function createStudent(formData: FormData) {
   if (existing) redirect("/students/new?error=admission");
 
   const student = await prisma.student.create({ data: { ...data, admissionNo } });
+
+  // Auto-create student login with temp password
+  const allUsernames = await prisma.user.findMany({ select: { username: true } });
+  const taken = new Set(allUsernames.map((u) => u.username));
+  const base = admissionNo.toLowerCase().replace(/-/g, "");
+  const autoUsername = uniqueUsername(base, taken);
+  const autoPassword = genPassword();
+  const autoUser = await prisma.user.create({
+    data: {
+      username: autoUsername,
+      name: `${data.firstName} ${data.lastName}`,
+      passwordHash: bcrypt.hashSync(autoPassword, 10),
+      role: "STUDENT",
+      tempPassword: autoPassword,
+    },
+  });
+  await prisma.student.update({ where: { id: student.id }, data: { userId: autoUser.id } });
+
   await log({
     actorUserId: session.userId,
     actorName: session.name,
