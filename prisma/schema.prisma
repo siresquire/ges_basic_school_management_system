@@ -10,11 +10,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "sqlite"
+  provider  = "postgresql"
   url       = env("DATABASE_URL")
-  // directUrl is used for migrations/db push — bypasses PgBouncer.
-  // Uncomment when deploying to Supabase (change provider to "postgresql" too).
-  // directUrl = env("DIRECT_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- Accounts & people ----------
