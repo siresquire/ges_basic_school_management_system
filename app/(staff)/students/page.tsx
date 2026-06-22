@@ -61,8 +61,8 @@ export default async function StudentsPage({
 
   const orderBy =
     sort === "gender"
-      ? ([{ gender: sortDir }, { classGroup: { level: "asc" } }, { lastName: "asc" }] as const)
-      : ([{ classGroup: { level: "asc" } }, { lastName: "asc" }] as const);
+      ? [{ gender: sortDir }, { classGroup: { level: "asc" as const } }, { lastName: "asc" as const }]
+      : [{ classGroup: { level: "asc" as const } }, { lastName: "asc" as const }];
 
   const [students, allClasses, total, noStudentLogin, noParentLogin] = await Promise.all([
     prisma.student.findMany({
