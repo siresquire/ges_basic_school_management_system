@@ -137,7 +137,7 @@ export async function setTeacherLogin(teacherId: string, formData: FormData) {
  */
 async function signaturePermission(teacherId: string): Promise<string> {
   const session = await requireStaff();
-  if (session.role === "ADMIN") return `/staff/${teacherId}`;
+  if (session.role === "ADMIN" || session.role === "SUPER_ADMIN") return `/staff/${teacherId}`;
   const own = await prisma.teacher.findFirst({
     where: { userId: session.userId },
     select: { id: true },

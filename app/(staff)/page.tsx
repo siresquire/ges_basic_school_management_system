@@ -72,7 +72,7 @@ export default async function DashboardPage() {
       value: marked > 0 ? `${present} / ${marked}` : "Not marked yet",
       href: "/attendance",
     },
-    ...(session.role === "ADMIN"
+    ...(session.role === "ADMIN" || session.role === "SUPER_ADMIN"
       ? [
           {
             label: "Fees collected this term",
@@ -153,7 +153,7 @@ export default async function DashboardPage() {
             <Link href="/reports" className="btn-secondary justify-start">
               Print report cards
             </Link>
-            {session.role === "ADMIN" && (
+            {session.role === "ADMIN" || session.role === "SUPER_ADMIN" && (
               <>
                 <Link href="/students/new" className="btn-secondary justify-start">
                   Admit a new student

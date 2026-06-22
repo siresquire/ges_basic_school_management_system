@@ -29,7 +29,7 @@ export default async function ClassesPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const session = await requireStaff();
-  const isAdmin = session.role === "ADMIN";
+  const isAdmin = session.role === "ADMIN" || session.role === "SUPER_ADMIN";
   const { saved, error } = await searchParams;
 
   const [allClasses, teachers, scope, enabledLevels, adminLevels] = await Promise.all([

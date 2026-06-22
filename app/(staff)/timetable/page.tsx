@@ -20,7 +20,7 @@ export default async function TimetablePage({
 }) {
   const session = await requireStaff();
   const sp = await searchParams;
-  const isAdmin = session.role === "ADMIN";
+  const isAdmin = session.role === "ADMIN" || session.role === "SUPER_ADMIN";
 
   const [scope, adminLevels] = await Promise.all([
     getTeacherScope(session),

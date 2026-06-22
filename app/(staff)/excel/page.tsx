@@ -16,7 +16,7 @@ export default async function ExcelPage({
   searchParams: Promise<{ class?: string; term?: string }>;
 }) {
   const session = await requireStaff();
-  const isAdmin = session.role === "ADMIN";
+  const isAdmin = session.role === "ADMIN" || session.role === "SUPER_ADMIN";
   const sp = await searchParams;
 
   const [allClasses, terms, currentTerm, scope, adminLevels] = await Promise.all([
