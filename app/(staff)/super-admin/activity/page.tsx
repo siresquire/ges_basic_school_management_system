@@ -13,6 +13,7 @@ const ACTION_LABEL: Record<string, string> = {
   // People
   STUDENT_CREATE: "Student added",
   STUDENT_STATUS: "Student status",
+  STUDENT_DEDUP: "Duplicates removed",
   TEACHER_CREATE: "Teacher added",
   TEACHER_UPDATE: "Teacher updated",
   TEACHER_LOGIN: "Teacher login set",
@@ -46,6 +47,7 @@ const ACTION_COLOR: Record<string, string> = {
   // Deletes — red
   CLASS_DELETE: "text-red-700 bg-red-50",
   SUBJECT_DELETE: "text-red-700 bg-red-50",
+  STUDENT_DEDUP: "text-red-700 bg-red-50",
   // Overrides / warnings — amber
   SCORE_OVERRIDE: "text-amber-700 bg-amber-50",
   USER_TOGGLE: "text-amber-700 bg-amber-50",

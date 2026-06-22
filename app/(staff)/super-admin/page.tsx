@@ -67,10 +67,16 @@ export default async function SuperAdminPage({
             <p className="text-sm text-gray-500">Super Admin only — changes apply across the entire system immediately.</p>
           </div>
         </div>
-        <a href="/super-admin/activity" className="btn-secondary flex items-center gap-1.5 text-sm">
-          <Icon name="history" />
-          Activity log
-        </a>
+        <div className="flex gap-2">
+          <a href="/super-admin/deduplicate" className="btn-secondary flex items-center gap-1.5 text-sm">
+            <Icon name="trash" />
+            Deduplicate students
+          </a>
+          <a href="/super-admin/activity" className="btn-secondary flex items-center gap-1.5 text-sm">
+            <Icon name="history" />
+            Activity log
+          </a>
+        </div>
       </div>
 
       {saved === "config" && <ConfigSavedRefresh triggered />}
