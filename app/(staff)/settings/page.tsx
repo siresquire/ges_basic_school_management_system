@@ -70,7 +70,7 @@ export default async function SettingsPage({
   const session = await requireAdmin();
   const { saved, error } = await searchParams;
 
-  const [school, years, users, subjects, logoAsset, headSigAsset, adminLevels] = await Promise.all([
+  const [school, years, allUsers, subjects, logoAsset, headSigAsset, adminLevels] = await Promise.all([
     prisma.schoolInfo.findUnique({ where: { id: 1 } }),
     prisma.academicYear.findMany({
       include: { terms: { orderBy: { name: "asc" } } },
@@ -78,6 +78,7 @@ export default async function SettingsPage({
     }),
     prisma.user.findMany({
       where: session.role === "SUPER_ADMIN" ? {} : { role: { not: "SUPER_ADMIN" } },
+      include: { teacher: { select: { levels: true } } },
       orderBy: [{ role: "asc" }, { username: "asc" }],
     }),
     prisma.subject.findMany({
@@ -88,6 +89,15 @@ export default async function SettingsPage({
     getSingletonImage("HEAD_SIGNATURE_PRIMARY"),
     getAdminLevels(session),
   ]);
+  // Level-restricted admins only see teacher accounts for their sections.
+  // Admin/Student/Parent accounts are always visible.
+  const users = adminLevels
+    ? allUsers.filter((u) => {
+        if (u.role !== "TEACHER") return true;
+        const lvl = u.teacher?.levels ?? "";
+        return !lvl || lvl.split(",").some((l) => adminLevels.includes(l));
+      })
+    : allUsers;
   const [jhsSigAsset, primaryBands, jhsBands] = await Promise.all([
     getSingletonImage("HEAD_SIGNATURE_JHS"),
     getGradeBands("PRIMARY"),
