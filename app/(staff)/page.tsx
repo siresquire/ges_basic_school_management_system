@@ -12,10 +12,9 @@ export default async function DashboardPage() {
   const today = dateFromISO(todayISO());
 
   // Teachers see numbers for their own classes only; admins are further scoped by assigned levels.
-  const [scope, adminLevels, teacherCount, currentTerm] = await Promise.all([
+  const [scope, adminLevels, currentTerm] = await Promise.all([
     getTeacherScope(session),
     getAdminLevels(session),
-    prisma.teacher.count({ where: { status: "ACTIVE" } }),
     prisma.term.findFirst({ where: { isCurrent: true }, include: { academicYear: true } }),
   ]);
 
@@ -23,8 +22,12 @@ export default async function DashboardPage() {
     ? (adminLevels ? { stage: { in: adminLevels } } : {})
     : { id: { in: scope.taughtClassIds } };
 
+  const teacherLevelWhere = adminLevels
+    ? { OR: adminLevels.map((l) => ({ levels: { contains: l } })) }
+    : {};
+
   // Fetch classes first so we can derive class IDs for attendance query.
-  const [classes, studentCount] = await Promise.all([
+  const [classes, studentCount, teacherCount] = await Promise.all([
     prisma.classGroup.findMany({
       where: classWhere,
       orderBy: [{ level: "asc" }, { name: "asc" }],
@@ -38,6 +41,7 @@ export default async function DashboardPage() {
         ? { status: "ACTIVE", ...(adminLevels ? { classGroup: { stage: { in: adminLevels } } } : {}) }
         : { status: "ACTIVE", classGroupId: { in: scope.taughtClassIds } },
     }),
+    prisma.teacher.count({ where: { status: "ACTIVE", ...teacherLevelWhere } }),
   ]);
 
   const classIds = classes.map((c) => c.id);
@@ -53,7 +57,11 @@ export default async function DashboardPage() {
     }),
     currentTerm
       ? prisma.payment.aggregate({
-          where: { termId: currentTerm.id },
+          where: {
+            termId: currentTerm.id,
+            // Scope fees to the admin's level; classIds already reflects that scope.
+            ...(adminLevels ? { student: { classGroupId: { in: classIds } } } : {}),
+          },
           _sum: { amount: true },
         })
       : Promise.resolve(null),
@@ -153,7 +161,7 @@ export default async function DashboardPage() {
             <Link href="/reports" className="btn-secondary justify-start">
               Print report cards
             </Link>
-            {session.role === "ADMIN" || session.role === "SUPER_ADMIN" && (
+            {(session.role === "ADMIN" || session.role === "SUPER_ADMIN") && (
               <>
                 <Link href="/students/new" className="btn-secondary justify-start">
                   Admit a new student
