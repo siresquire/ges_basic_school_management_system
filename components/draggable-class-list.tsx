@@ -36,6 +36,7 @@ export type TeacherItem = {
   id: string;
   firstName: string;
   lastName: string;
+  levels: string;
 };
 
 const STAGE_OPTIONS = [
@@ -112,11 +113,17 @@ function SortableRow({ c, teachers, enabledStages }: { c: ClassItem; teachers: T
           defaultValue={c.classTeacherId ?? ""}
         >
           <option value="">— None —</option>
-          {teachers.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.firstName} {t.lastName}
-            </option>
-          ))}
+          {teachers
+            .filter((t) => {
+              // Teachers with no levels set appear in all dropdowns
+              const tLevels = t.levels ? t.levels.split(",").filter(Boolean) : [];
+              return tLevels.length === 0 || tLevels.includes(c.stage);
+            })
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.firstName} {t.lastName}
+              </option>
+            ))}
         </select>
       </td>
       <td>

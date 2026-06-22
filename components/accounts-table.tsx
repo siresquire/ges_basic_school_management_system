@@ -54,7 +54,7 @@ export function AccountsTable({
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(10);
 
   function resetPage() {
     setPage(1);
@@ -157,7 +157,7 @@ export function AccountsTable({
                     {u.tempPassword ? (
                       <TempPasswordCell password={u.tempPassword} />
                     ) : (
-                      <span className="text-gray-300">—</span>
+                      <span className="badge-green text-xs">Changed</span>
                     )}
                   </td>
                   <td>

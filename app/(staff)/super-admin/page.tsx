@@ -49,6 +49,11 @@ export default async function SuperAdminPage({
     prisma.user.findMany({
       where: { role: { in: ["ADMIN", "TEACHER", "STUDENT", "PARENT"] }, active: true },
       orderBy: [{ role: "asc" }, { name: "asc" }],
+      include: {
+        teacher: { select: { levels: true } },
+        studentProfile: { select: { classGroup: { select: { stage: true } } } },
+        children: { take: 1, select: { classGroup: { select: { stage: true } } } },
+      },
     }),
   ]);
 
@@ -345,12 +350,25 @@ export default async function SuperAdminPage({
           you are observing — click it to return instantly. Changes you make are real.
         </p>
         <ObserveAsSection
-          users={staffUsers.map((u) => ({
-            id: u.id,
-            name: u.name,
-            username: u.username,
-            role: u.role,
-          }))}
+          users={staffUsers.map((u) => {
+            const STAGE: Record<string, string> = { CRECHE: "Creche", KG: "KG", PRIMARY: "Primary", JHS: "JHS" };
+            const fmt = (s: string) => STAGE[s] ?? s;
+            let level = "—";
+            if (u.role === "TEACHER") {
+              const lvls = (u.teacher?.levels ?? "").split(",").filter(Boolean);
+              level = lvls.length === 0 ? "All levels" : lvls.map(fmt).join(" · ");
+            } else if (u.role === "STUDENT") {
+              const s = u.studentProfile?.classGroup?.stage;
+              level = s ? fmt(s) : "—";
+            } else if (u.role === "ADMIN") {
+              const lvls = u.assignedLevels.split(",").filter(Boolean);
+              level = lvls.length === 0 ? "All levels" : lvls.map(fmt).join(" · ");
+            } else if (u.role === "PARENT") {
+              const s = u.children[0]?.classGroup?.stage;
+              level = s ? fmt(s) : "—";
+            }
+            return { id: u.id, name: u.name, username: u.username, role: u.role, level };
+          })}
         />
       </div>
     </div>

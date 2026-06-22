@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { impersonateUser } from "@/app/(staff)/super-admin/actions";
 
-type UserRow = { id: string; name: string; username: string; role: string };
+type UserRow = { id: string; name: string; username: string; role: string; level: string };
 
 const FILTERS = ["All", "Admin", "Teacher", "Student", "Parent"] as const;
 type Filter = (typeof FILTERS)[number];
@@ -32,11 +32,18 @@ const ROLE_LABEL: Record<string, string> = {
 
 const PER_PAGE_OPTIONS = [10, 25, 50];
 
+const STAGE_LABEL: Record<string, string> = {
+  CRECHE: "Creche",
+  KG: "KG",
+  PRIMARY: "Primary",
+  JHS: "JHS",
+};
+
 export function ObserveAsSection({ users }: { users: UserRow[] }) {
   const [active, setActive] = useState<Filter>("All");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(10);
 
   function resetPage() { setPage(1); }
 
@@ -111,27 +118,47 @@ export function ObserveAsSection({ users }: { users: UserRow[] }) {
                   <th>Name</th>
                   <th>Username</th>
                   <th>Role</th>
+                  <th>Level</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {paged.map((u) => (
-                  <tr key={u.id}>
-                    <td className="font-medium">{u.name}</td>
-                    <td className="font-mono text-xs text-gray-500">{u.username}</td>
-                    <td>
-                      <span className={ROLE_BADGE[u.role] ?? "badge-gray"}>
-                        {ROLE_LABEL[u.role] ?? u.role}
-                      </span>
-                    </td>
-                    <td>
-                      <form action={impersonateUser}>
-                        <input type="hidden" name="userId" value={u.id} />
-                        <button className="btn-secondary btn-sm">View as</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                {paged.map((u) => {
+                  const levelParts = u.level
+                    .split("·")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  return (
+                    <tr key={u.id}>
+                      <td className="font-medium">{u.name}</td>
+                      <td className="font-mono text-xs text-gray-500">{u.username}</td>
+                      <td>
+                        <span className={ROLE_BADGE[u.role] ?? "badge-gray"}>
+                          {ROLE_LABEL[u.role] ?? u.role}
+                        </span>
+                      </td>
+                      <td>
+                        {u.level === "All levels" ? (
+                          <span className="text-xs text-gray-400">All levels</span>
+                        ) : levelParts.length > 0 ? (
+                          <span className="flex flex-wrap gap-1">
+                            {levelParts.map((l) => (
+                              <span key={l} className="badge-gray text-xs">{l}</span>
+                            ))}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <form action={impersonateUser}>
+                          <input type="hidden" name="userId" value={u.id} />
+                          <button className="btn-secondary btn-sm">View as</button>
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

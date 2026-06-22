@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession, homeFor } from "@/lib/auth";
 import { dataUrl, getSingletonImage } from "@/lib/images";
 import { getSchoolInfo } from "@/lib/cached";
+import { SubmitButton } from "@/components/submit-button";
 import { login } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -88,9 +89,9 @@ export default async function LoginPage({
                 required
               />
             </div>
-            <button type="submit" className="btn-primary w-full">
+            <SubmitButton className="btn-primary w-full" loadingText="Signing in…">
               Sign in
-            </button>
+            </SubmitButton>
           </form>
         </div>
         <p className="mt-4 text-center text-xs text-emerald-100/70">

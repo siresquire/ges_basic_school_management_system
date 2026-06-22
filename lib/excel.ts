@@ -106,6 +106,19 @@ function genderVal(value: CellValue): string | null {
   return null;
 }
 
+// Restore the leading zero that Excel strips from Ghana phone numbers (0XX XXXX XXX).
+// Excel saves 0244123456 as the number 244123456 — we get a 9-digit string.
+// Also handles international prefix 233XXXXXXXXX → 0XXXXXXXXX.
+function phoneVal(value: CellValue): string | null {
+  const raw = strVal(value);
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 9) return `0${digits}`;
+  if (digits.length === 12 && digits.startsWith("233")) return `0${digits.slice(3)}`;
+  return raw;
+}
+
 // ====================================================================
 // Learners
 // ====================================================================
@@ -239,7 +252,7 @@ export async function importStudentsFromBuffer(
         dateOfBirth: dateVal(row.getCell(6).value),
         classGroupId: classGroup?.id ?? null,
         guardianName: strVal(row.getCell(8).value) || null,
-        guardianPhone: strVal(row.getCell(9).value) || null,
+        guardianPhone: phoneVal(row.getCell(9).value),
         address: strVal(row.getCell(10).value) || null,
       },
     });
@@ -322,7 +335,7 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
         firstName,
         lastName,
         gender,
-        phone: strVal(row.getCell(5).value) || null,
+        phone: phoneVal(row.getCell(5).value),
         email: strVal(row.getCell(6).value) || null,
       },
     });

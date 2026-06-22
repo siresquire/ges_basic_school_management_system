@@ -40,7 +40,11 @@ export default async function ClassesPage({
         classTeacher: true,
       },
     }),
-    prisma.teacher.findMany({ where: { status: "ACTIVE" }, orderBy: { firstName: "asc" } }),
+    prisma.teacher.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { firstName: "asc" },
+      select: { id: true, firstName: true, lastName: true, levels: true },
+    }),
     getTeacherScope(session),
     getEnabledLevels(),
     getAdminLevels(session),
