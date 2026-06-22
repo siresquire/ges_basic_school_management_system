@@ -10,7 +10,7 @@ import { log } from "@/lib/activity";
 const ALL_LEVELS = ["CRECHE", "KG", "PRIMARY", "JHS"] as const;
 
 export async function saveSchoolConfig(formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
 
   const enabledLevels = ALL_LEVELS.filter(
     (l) => formData.get(`level_${l}`) === "on"
@@ -32,12 +32,13 @@ export async function saveSchoolConfig(formData: FormData) {
     create: { id: 1, ...data },
   });
 
+  await log({ actorUserId: session.userId, actorName: session.name, action: "SYSTEM_CONFIG", detail: `Updated system configuration (levels: ${data.enabledLevels})` });
   revalidatePath("/", "layout");
   redirect("/super-admin?saved=config");
 }
 
 export async function createSuperAdmin(formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
 
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
@@ -60,6 +61,7 @@ export async function createSuperAdmin(formData: FormData) {
     },
   });
 
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_CREATE", detail: `Created Super Admin account "${username}" (${name})` });
   revalidatePath("/super-admin");
   redirect("/super-admin?saved=superadmin");
 }
@@ -95,18 +97,20 @@ export async function endImpersonation() {
 }
 
 export async function resetSuperAdminPassword(userId: string, formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const password = String(formData.get("password") ?? "");
   if (password.length < 6) redirect("/super-admin?error=password");
+  const target = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true, name: true } });
   await prisma.user.update({
     where: { id: userId },
     data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_UPDATE", detail: `Reset password for Super Admin "${target.username}" (${target.name})` });
   redirect("/super-admin?saved=password");
 }
 
 export async function createAdminAccount(formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -122,32 +126,39 @@ export async function createAdminAccount(formData: FormData) {
   await prisma.user.create({
     data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN", assignedLevels, tempPassword: password },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_CREATE", detail: `Created Admin account "${username}" (${name})${assignedLevels ? ` — levels: ${assignedLevels}` : ""}` });
   revalidatePath("/super-admin");
   redirect("/super-admin?saved=admin");
 }
 
 export async function updateAdminLevels(userId: string, formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const assignedLevels = ALL_LEVELS.filter(
     (l) => formData.get(`admin_level_${l}`) === "on"
   ).join(",");
+  const target = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true, name: true } });
   await prisma.user.update({ where: { id: userId }, data: { assignedLevels } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_UPDATE", detail: `Updated levels for "${target.username}" → ${assignedLevels || "all levels"}` });
   revalidatePath("/super-admin");
   redirect("/super-admin?saved=admin_levels");
 }
 
 export async function resetAdminPassword(userId: string, formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const password = String(formData.get("password") ?? "");
   if (password.length < 6) redirect("/super-admin?error=password");
+  const target = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { username: true, name: true } });
   await prisma.user.update({ where: { id: userId }, data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_UPDATE", detail: `Reset password for Admin "${target.username}" (${target.name})` });
   redirect("/super-admin?saved=password");
 }
 
 export async function toggleAdminActive(userId: string, formData: FormData) {
-  await requireSuperAdmin();
-  const current = await prisma.user.findUnique({ where: { id: userId }, select: { active: true } });
-  await prisma.user.update({ where: { id: userId }, data: { active: !current?.active } });
+  const session = await requireSuperAdmin();
+  const current = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { active: true, username: true, name: true } });
+  const nextActive = !current.active;
+  await prisma.user.update({ where: { id: userId }, data: { active: nextActive } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "USER_TOGGLE", detail: `${nextActive ? "Activated" : "Deactivated"} account "${current.username}" (${current.name})` });
   revalidatePath("/super-admin");
   redirect("/super-admin");
 }

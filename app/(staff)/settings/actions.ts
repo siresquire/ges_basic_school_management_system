@@ -8,6 +8,7 @@ import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { dateFromISO } from "@/lib/format";
 import { readImageFile, setSingletonImage, deleteSingletonImage } from "@/lib/images";
 import { getAdminLevels } from "@/lib/admin-scope";
+import { log } from "@/lib/activity";
 
 const PRIMARY_STAGES = ["CRECHE", "KG", "PRIMARY"];
 
@@ -51,6 +52,7 @@ export async function saveSchoolInfo(formData: FormData) {
     update: data,
     create: { id: 1, ...data },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "SCHOOL_INFO", detail: `Updated school information (name: "${data.name}")` });
   revalidatePath("/", "layout");
   redirect("/settings?saved=school");
 }
@@ -206,6 +208,7 @@ export async function addSubject(formData: FormData) {
   }
 
   await prisma.subject.create({ data: { name, stages } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "SUBJECT_CREATE", detail: `Added subject "${name}" (stages: ${stages || "none"})` });
   revalidatePath("/settings");
   redirect("/settings?saved=subject");
 }
@@ -234,6 +237,7 @@ export async function updateSubject(subjectId: string, formData: FormData) {
     where: { id: subjectId },
     data: { name, stages },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "SUBJECT_UPDATE", detail: `Updated subject "${name}" (stages: ${stages || "none"})` });
   revalidatePath("/settings");
   redirect("/settings?saved=subject");
 }
@@ -251,12 +255,14 @@ export async function deleteSubject(subjectId: string) {
   const scoreCount = await prisma.score.count({ where: { subjectId } });
   if (scoreCount > 0) redirect("/settings?error=subjectscores");
 
+  const subject = await prisma.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { name: true, stages: true } });
+
   if (adminLevels) {
-    const subject = await prisma.subject.findUniqueOrThrow({ where: { id: subjectId }, select: { stages: true } });
     const remaining = subject.stages.split(",").filter((s) => s && !adminLevels.includes(s));
     if (remaining.length > 0) {
       // Subject belongs to other levels too — strip only this admin's stages.
       await prisma.subject.update({ where: { id: subjectId }, data: { stages: remaining.join(",") } });
+      await log({ actorUserId: session.userId, actorName: session.name, action: "SUBJECT_UPDATE", detail: `Removed "${subject.name}" from levels: ${adminLevels.join(", ")}` });
       revalidatePath("/settings");
       redirect("/settings?saved=subjectdeleted");
     }
@@ -268,13 +274,14 @@ export async function deleteSubject(subjectId: string) {
     prisma.timetableSlot.deleteMany({ where: { subjectId } }),
     prisma.subject.delete({ where: { id: subjectId } }),
   ]);
+  await log({ actorUserId: session.userId, actorName: session.name, action: "SUBJECT_DELETE", detail: `Deleted subject "${subject.name}"` });
   revalidatePath("/settings");
   redirect("/settings?saved=subjectdeleted");
 }
 
 /** Creates an additional administrator account (e.g. head teacher + office clerk). */
 export async function createAdminUser(formData: FormData) {
-  await requireSuperAdmin();
+  const session = await requireSuperAdmin();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -287,6 +294,7 @@ export async function createAdminUser(formData: FormData) {
   await prisma.user.create({
     data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN", tempPassword: password },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_CREATE", detail: `Created admin account "${username}" (${name})` });
   revalidatePath("/settings");
   redirect("/settings?saved=admin");
 }
@@ -303,6 +311,7 @@ export async function adminResetPassword(userId: string, formData: FormData) {
     where: { id: userId },
     data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "ADMIN_UPDATE", detail: `Reset password for "${target.username}" (${target.name})` });
   redirect("/settings?saved=password");
 }
 
@@ -313,7 +322,9 @@ export async function toggleUserActive(userId: string) {
   if (user.role === "SUPER_ADMIN" && session.role !== "SUPER_ADMIN") {
     redirect("/settings?error=protected");
   }
-  await prisma.user.update({ where: { id: userId }, data: { active: !user.active } });
+  const nextActive = !user.active;
+  await prisma.user.update({ where: { id: userId }, data: { active: nextActive } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "USER_TOGGLE", detail: `${nextActive ? "Activated" : "Deactivated"} account "${user.username}" (${user.name})` });
   revalidatePath("/settings");
   redirect("/settings?saved=user");
 }

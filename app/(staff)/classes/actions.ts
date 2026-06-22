@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { log } from "@/lib/activity";
 
 const STAGES = ["CRECHE", "KG", "PRIMARY", "JHS"];
 
@@ -16,7 +17,7 @@ function classDataFrom(formData: FormData) {
 }
 
 export async function createClass(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { name, stage } = classDataFrom(formData);
   if (!name) redirect("/classes?error=name");
 
@@ -28,13 +29,14 @@ export async function createClass(formData: FormData) {
   const level = (agg._max.level ?? 0) + 1;
 
   await prisma.classGroup.create({ data: { name, stage, level } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "CLASS_CREATE", detail: `Added class "${name}" (${stage})` });
   revalidatePath("/classes");
   redirect("/classes?saved=created");
 }
 
 /** Updates name, stage and class teacher. Level is managed by drag-and-drop. */
 export async function updateClass(classGroupId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const { name, stage } = classDataFrom(formData);
   if (!name) redirect("/classes?error=name");
 
@@ -46,6 +48,7 @@ export async function updateClass(classGroupId: string, formData: FormData) {
     where: { id: classGroupId },
     data: { name, stage, classTeacherId: teacherId },
   });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "CLASS_UPDATE", detail: `Updated class "${name}" (${stage})` });
   revalidatePath("/classes");
   redirect("/classes?saved=updated");
 }
@@ -69,9 +72,10 @@ export async function reorderClasses(orderedIds: string[]) {
  * cleaned up automatically.
  */
 export async function deleteClass(classGroupId: string) {
-  await requireAdmin();
+  const session = await requireAdmin();
 
-  const [studentCount, scoreCount, attendanceCount] = await Promise.all([
+  const [cls, studentCount, scoreCount, attendanceCount] = await Promise.all([
+    prisma.classGroup.findUnique({ where: { id: classGroupId }, select: { name: true } }),
     prisma.student.count({ where: { classGroupId } }),
     prisma.score.count({ where: { classGroupId } }),
     prisma.attendanceRecord.count({ where: { classGroupId } }),
@@ -87,6 +91,7 @@ export async function deleteClass(classGroupId: string) {
     prisma.classGroup.delete({ where: { id: classGroupId } }),
   ]);
 
+  await log({ actorUserId: session.userId, actorName: session.name, action: "CLASS_DELETE", detail: `Deleted class "${cls?.name ?? classGroupId}"` });
   revalidatePath("/classes");
   redirect("/classes?saved=deleted");
 }

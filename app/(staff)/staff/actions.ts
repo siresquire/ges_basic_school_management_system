@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff, homeFor } from "@/lib/auth";
 import { readImageFile } from "@/lib/images";
+import { log } from "@/lib/activity";
 
 function teacherDataFrom(formData: FormData) {
   const str = (k: string) => String(formData.get(k) ?? "").trim() || null;
@@ -72,7 +73,7 @@ function teacherDataFrom(formData: FormData) {
 }
 
 export async function createTeacher(formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const data = teacherDataFrom(formData);
   if (!data.firstName || !data.lastName) redirect("/staff/new?error=name");
 
@@ -82,12 +83,13 @@ export async function createTeacher(formData: FormData) {
   }
 
   const teacher = await prisma.teacher.create({ data });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "TEACHER_CREATE", detail: `Added teacher ${data.firstName} ${data.lastName}${data.staffId ? ` (ID: ${data.staffId})` : ""}` });
   revalidatePath("/staff");
   redirect(`/staff/${teacher.id}`);
 }
 
 export async function updateTeacher(teacherId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const data = teacherDataFrom(formData);
   const status = String(formData.get("status") ?? "ACTIVE");
 
@@ -97,13 +99,14 @@ export async function updateTeacher(teacherId: string, formData: FormData) {
   }
 
   await prisma.teacher.update({ where: { id: teacherId }, data: { ...data, status } });
+  await log({ actorUserId: session.userId, actorName: session.name, action: "TEACHER_UPDATE", detail: `Updated teacher ${data.firstName} ${data.lastName}` });
   revalidatePath("/staff");
   redirect(`/staff/${teacherId}?saved=1`);
 }
 
 /** Creates a login for the teacher, or resets the password if one exists. */
 export async function setTeacherLogin(teacherId: string, formData: FormData) {
-  await requireAdmin();
+  const session = await requireAdmin();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   if (!username || password.length < 6) redirect(`/staff/${teacherId}?error=login`);
@@ -112,6 +115,7 @@ export async function setTeacherLogin(teacherId: string, formData: FormData) {
   const taken = await prisma.user.findUnique({ where: { username } });
   if (taken && taken.id !== teacher.userId) redirect(`/staff/${teacherId}?error=username`);
 
+  const action = teacher.userId ? "reset" : "created";
   if (teacher.userId) {
     await prisma.user.update({
       where: { id: teacher.userId },
@@ -129,6 +133,7 @@ export async function setTeacherLogin(teacherId: string, formData: FormData) {
     });
     await prisma.teacher.update({ where: { id: teacherId }, data: { userId: user.id } });
   }
+  await log({ actorUserId: session.userId, actorName: session.name, action: "TEACHER_LOGIN", detail: `${action === "created" ? "Created" : "Reset"} login for ${teacher.firstName} ${teacher.lastName} (username: ${username})` });
   revalidatePath(`/staff/${teacherId}`);
   redirect(`/staff/${teacherId}?saved=login`);
 }

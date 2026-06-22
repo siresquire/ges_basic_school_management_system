@@ -6,21 +6,54 @@ import Icon from "@/components/icon";
 export const metadata = { title: "Activity Log" };
 
 const ACTION_LABEL: Record<string, string> = {
+  // Scores
   SCORE_SAVE: "Scores saved",
   SCORE_OVERRIDE: "Score override",
   SCORE_IMPORT: "Scores imported",
+  // People
   STUDENT_CREATE: "Student added",
   STUDENT_STATUS: "Student status",
-  PAYMENT_RECORD: "Payment recorded",
   TEACHER_CREATE: "Teacher added",
+  TEACHER_UPDATE: "Teacher updated",
+  TEACHER_LOGIN: "Teacher login set",
+  // Accounts
+  ADMIN_CREATE: "Account created",
+  ADMIN_UPDATE: "Password / levels",
+  USER_TOGGLE: "Account toggled",
+  // Academic structure
+  CLASS_CREATE: "Class added",
+  CLASS_UPDATE: "Class updated",
+  CLASS_DELETE: "Class deleted",
+  SUBJECT_CREATE: "Subject added",
+  SUBJECT_UPDATE: "Subject updated",
+  SUBJECT_DELETE: "Subject deleted",
+  // Finance
+  PAYMENT_RECORD: "Payment recorded",
+  // Configuration
+  SCHOOL_INFO: "School info saved",
+  SYSTEM_CONFIG: "System config",
+  // Audit
   IMPERSONATE: "Impersonation",
 };
 
 const ACTION_COLOR: Record<string, string> = {
-  SCORE_OVERRIDE: "text-amber-700 bg-amber-50",
-  IMPERSONATE: "text-violet-700 bg-violet-50",
+  // Creates — green
   STUDENT_CREATE: "text-emerald-700 bg-emerald-50",
+  TEACHER_CREATE: "text-emerald-700 bg-emerald-50",
+  CLASS_CREATE: "text-emerald-700 bg-emerald-50",
+  SUBJECT_CREATE: "text-emerald-700 bg-emerald-50",
+  ADMIN_CREATE: "text-emerald-700 bg-emerald-50",
+  // Deletes — red
+  CLASS_DELETE: "text-red-700 bg-red-50",
+  SUBJECT_DELETE: "text-red-700 bg-red-50",
+  // Overrides / warnings — amber
+  SCORE_OVERRIDE: "text-amber-700 bg-amber-50",
+  USER_TOGGLE: "text-amber-700 bg-amber-50",
+  // Finance — blue
   PAYMENT_RECORD: "text-blue-700 bg-blue-50",
+  ADMIN_UPDATE: "text-blue-700 bg-blue-50",
+  // Audit — violet
+  IMPERSONATE: "text-violet-700 bg-violet-50",
 };
 
 export default async function ActivityLogPage({
