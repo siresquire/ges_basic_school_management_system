@@ -132,11 +132,38 @@ export default function Sidebar({
           <Icon name={open ? "close" : "menu"} />
         </button>
       </div>
+
+      {/* Mobile menu — fixed overlay so it covers the full viewport regardless of scroll position */}
       {open && (
-        <div className="no-print bg-emerald-900 lg:hidden">
-          {nav}
-          {footer}
-        </div>
+        <>
+          {/* Backdrop — tap to close */}
+          <div
+            className="no-print fixed inset-0 z-30 bg-black/50 lg:hidden"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Drawer */}
+          <div className="no-print fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-hidden bg-emerald-900 shadow-2xl lg:hidden">
+            <div className="flex shrink-0 items-center justify-between border-b border-emerald-800 px-4 py-3">
+              <span className="flex min-w-0 items-center gap-2">
+                {showLogo && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src="/logo" alt="" className="h-7 w-7 shrink-0 rounded-full bg-white object-contain" />
+                )}
+                <span className="truncate text-sm font-semibold text-white">{schoolName}</span>
+              </span>
+              <button
+                onClick={() => setOpen(false)}
+                className="cursor-pointer rounded-md px-2 py-1 text-lg text-emerald-100 hover:bg-emerald-800"
+                aria-label="Close menu"
+              >
+                <Icon name="close" />
+              </button>
+            </div>
+            {nav}
+            {footer}
+          </div>
+        </>
       )}
 
       {/* Desktop sidebar — pinned to the viewport; only the nav scrolls. */}
