@@ -9,8 +9,10 @@
 //
 // Uses relative imports so maintenance scripts can run it with tsx directly.
 import ExcelJS from "exceljs";
+import bcrypt from "bcryptjs";
 import { prisma } from "./db";
 import { fullName } from "./format";
+import { genPassword, uniqueUsername } from "./passwords";
 
 export type ImportResult = {
   ok: boolean;
@@ -194,6 +196,11 @@ export async function importStudentsFromBuffer(
   let nextNum = last ? parseInt(last.admissionNo.replace("AKW-", ""), 10) : 0;
   if (isNaN(nextNum)) nextNum = 0;
 
+  // Pre-load taken usernames once so per-row lookups are O(1).
+  const takenUsernames = new Set(
+    (await prisma.user.findMany({ select: { username: true } })).map((u) => u.username)
+  );
+
   let created = 0;
   let skipped = 0;
   const details: string[] = [];
@@ -201,8 +208,8 @@ export async function importStudentsFromBuffer(
 
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
-    const firstName = strVal(row.getCell(2).value);
-    const lastName = strVal(row.getCell(3).value);
+    const firstName = strVal(row.getCell(2).value).toUpperCase();
+    const lastName = strVal(row.getCell(3).value).toUpperCase();
     const anything =
       firstName || lastName || strVal(row.getCell(1).value) || strVal(row.getCell(7).value);
     if (!anything) continue; // blank row
@@ -242,12 +249,12 @@ export async function importStudentsFromBuffer(
       continue;
     }
 
-    await prisma.student.create({
+    const student = await prisma.student.create({
       data: {
         admissionNo,
         firstName,
         lastName,
-        otherNames: strVal(row.getCell(4).value) || null,
+        otherNames: strVal(row.getCell(4).value).toUpperCase() || null,
         gender,
         dateOfBirth: dateVal(row.getCell(6).value),
         classGroupId: classGroup?.id ?? null,
@@ -256,6 +263,22 @@ export async function importStudentsFromBuffer(
         address: strVal(row.getCell(10).value) || null,
       },
     });
+
+    // Auto-create portal login with temp password
+    const base = admissionNo.toLowerCase().replace(/-/g, "");
+    const username = uniqueUsername(base, takenUsernames);
+    const password = genPassword();
+    const autoUser = await prisma.user.create({
+      data: {
+        username,
+        name: `${firstName} ${lastName}`,
+        passwordHash: bcrypt.hashSync(password, 10),
+        role: "STUDENT",
+        tempPassword: password,
+      },
+    });
+    await prisma.student.update({ where: { id: student.id }, data: { userId: autoUser.id } });
+
     created++;
   }
 
@@ -303,13 +326,18 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
   const ws = wb.getWorksheet("Staff") ?? wb.worksheets[0];
   if (!ws) return { ok: false, message: "No worksheet found in that file.", details: [] };
 
+  // Pre-load taken usernames once so per-row lookups are O(1).
+  const takenTeacherUsernames = new Set(
+    (await prisma.user.findMany({ select: { username: true } })).map((u) => u.username)
+  );
+
   let created = 0;
   const details: string[] = [];
 
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
-    const firstName = strVal(row.getCell(2).value);
-    const lastName = strVal(row.getCell(3).value);
+    const firstName = strVal(row.getCell(2).value).toUpperCase();
+    const lastName = strVal(row.getCell(3).value).toUpperCase();
     if (!firstName && !lastName && !strVal(row.getCell(1).value)) continue;
 
     if (!firstName || !lastName) {
@@ -329,7 +357,7 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
         continue;
       }
     }
-    await prisma.teacher.create({
+    const teacher = await prisma.teacher.create({
       data: {
         staffId,
         firstName,
@@ -339,14 +367,30 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
         email: strVal(row.getCell(6).value) || null,
       },
     });
+
+    // Auto-create login with temp password
+    const base = staffId ?? `${firstName}${lastName}`;
+    const username = uniqueUsername(base, takenTeacherUsernames);
+    const password = genPassword();
+    const autoUser = await prisma.user.create({
+      data: {
+        username,
+        name: `${firstName} ${lastName}`,
+        passwordHash: bcrypt.hashSync(password, 10),
+        role: "TEACHER",
+        tempPassword: password,
+      },
+    });
+    await prisma.teacher.update({ where: { id: teacher.id }, data: { userId: autoUser.id } });
+
     created++;
   }
 
   return {
     ok: created > 0 || details.length === 0,
-    message: `${created} teacher${created === 1 ? "" : "s"} added${
+    message: `${created} teacher${created === 1 ? "" : "s"} added with auto-generated logins${
       details.length ? `, ${details.length} row(s) had problems` : ""
-    }. Create logins from each teacher's Staff page.`,
+    }. Download passwords from the Staff page.`,
     details: details.slice(0, 20),
   };
 }

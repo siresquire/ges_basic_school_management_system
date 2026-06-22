@@ -8,7 +8,7 @@ import { saveSchoolConfig, createSuperAdmin, resetSuperAdminPassword, impersonat
 import { ShowToast } from "@/components/show-toast";
 import { PasswordInput } from "@/components/password-input";
 import { ObserveAsSection } from "@/components/observe-as-section";
-import { TempPasswordBadge } from "@/components/temp-password-badge";
+import { TempPasswordCell } from "@/components/temp-password-cell";
 
 export const metadata = { title: "System Configuration" };
 
@@ -182,7 +182,7 @@ export default async function SuperAdminPage({
                       <PasswordInput name="password" compact minLength={6} />
                       <button className="btn-secondary btn-sm">Set</button>
                     </form>
-                    {u.tempPassword && <TempPasswordBadge password={u.tempPassword} />}
+                    {u.tempPassword && <TempPasswordCell password={u.tempPassword} />}
                   </td>
                 </tr>
               ))}
@@ -287,7 +287,7 @@ export default async function SuperAdminPage({
                           <PasswordInput name="password" compact minLength={6} />
                           <button className="btn-secondary btn-sm">Set</button>
                         </form>
-                        {u.tempPassword && <TempPasswordBadge password={u.tempPassword} />}
+                        {u.tempPassword && <TempPasswordCell password={u.tempPassword} />}
                       </td>
                       <td>
                         <form action={toggleAdminActive.bind(null, u.id)}>
