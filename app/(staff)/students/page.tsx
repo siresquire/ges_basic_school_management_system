@@ -45,7 +45,7 @@ export default async function StudentsPage({
       : {}),
   };
 
-  const [students, allClasses, total] = await Promise.all([
+  const [students, allClasses, total, noStudentLogin, noParentLogin] = await Promise.all([
     prisma.student.findMany({
       where,
       include: { classGroup: true },
@@ -54,6 +54,8 @@ export default async function StudentsPage({
     }),
     getEnabledClassList(),
     prisma.student.count({ where }),
+    scope.isAdmin ? prisma.student.count({ where: { userId: null, status: "ACTIVE" } }) : Promise.resolve(0),
+    scope.isAdmin ? prisma.student.count({ where: { parentUserId: null, status: "ACTIVE", guardianName: { not: null } } }) : Promise.resolve(0),
   ]);
   // Filter class list by both teacher scope and admin levels
   const classes = filterClasses(scope, adminLevels
@@ -65,7 +67,19 @@ export default async function StudentsPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="page-title">Students</h1>
         {(scope.isAdmin || scope.classTeacherOf.length > 0) && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {scope.isAdmin && noStudentLogin > 0 && (
+              <a href="/students/bulk-logins" className="btn-secondary flex items-center gap-1.5">
+                <Icon name="excel" />
+                Student logins ({noStudentLogin})
+              </a>
+            )}
+            {scope.isAdmin && noParentLogin > 0 && (
+              <a href="/students/bulk-parent-logins" className="btn-secondary flex items-center gap-1.5">
+                <Icon name="excel" />
+                Parent logins ({noParentLogin})
+              </a>
+            )}
             <Link href="/excel" className="btn-secondary">
               <Icon name="excel" />
               Bulk upload (Excel)

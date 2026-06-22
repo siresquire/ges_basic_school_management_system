@@ -17,11 +17,19 @@ export default async function StaffPage() {
     },
   });
 
+  const noLoginCount = teachers.filter((t) => !t.user).length;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="page-title">Staff</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {noLoginCount > 0 && (
+            <a href="/staff/bulk-logins" className="btn-secondary flex items-center gap-1.5">
+              <Icon name="excel" />
+              Generate logins ({noLoginCount})
+            </a>
+          )}
           <Link href="/excel" className="btn-secondary">
             <Icon name="excel" />
             Bulk upload (Excel)
