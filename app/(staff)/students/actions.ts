@@ -169,7 +169,7 @@ export async function createPortalLogin(
     if (student.userId) {
       await prisma.user.update({
         where: { id: student.userId },
-        data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true },
+        data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true, tempPassword: password },
       });
     } else {
       const user = await prisma.user.create({
@@ -178,6 +178,7 @@ export async function createPortalLogin(
           passwordHash: bcrypt.hashSync(password, 10),
           name: `${student.firstName} ${student.lastName}`,
           role: "STUDENT",
+          tempPassword: password,
         },
       });
       await prisma.student.update({ where: { id: studentId }, data: { userId: user.id } });
@@ -187,7 +188,7 @@ export async function createPortalLogin(
     if (student.parentUserId) {
       await prisma.user.update({
         where: { id: student.parentUserId },
-        data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true },
+        data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true, tempPassword: password },
       });
     } else {
       // Re-use an existing parent account if a sibling already has this username linked.
@@ -197,6 +198,7 @@ export async function createPortalLogin(
           passwordHash: bcrypt.hashSync(password, 10),
           name: student.guardianName ?? `Parent of ${student.firstName} ${student.lastName}`,
           role: "PARENT",
+          tempPassword: password,
         },
       });
       await prisma.student.update({ where: { id: studentId }, data: { parentUserId: user.id } });

@@ -9,6 +9,7 @@ import ParentSearchInput from "@/components/parent-search-input";
 import { updateStudent, createPortalLogin, linkExistingParent, setStudentStatus } from "../actions";
 import { ShowToast } from "@/components/show-toast";
 import { PasswordInput } from "@/components/password-input";
+import { TempPasswordBadge } from "@/components/temp-password-badge";
 
 export const metadata = { title: "Student" };
 
@@ -182,6 +183,9 @@ export default async function StudentPage({
                 </button>
               </form>
             )}
+            {student.user?.tempPassword && (
+              <TempPasswordBadge password={student.user.tempPassword} />
+            )}
           </div>
 
           <div className="card p-6">
@@ -210,6 +214,9 @@ export default async function StudentPage({
                     {student.parentUser ? "Reset password" : "Create parent login"}
                   </button>
                 </form>
+                {student.parentUser?.tempPassword && (
+                  <TempPasswordBadge password={student.parentUser.tempPassword} />
+                )}
                 {!student.parentUser && (
                   <ParentSearchInput action={linkExistingParent.bind(null, student.id)} />
                 )}

@@ -7,6 +7,7 @@ import SignatureCard from "@/components/signature-card";
 import { updateTeacher, setTeacherLogin, addAssignment, removeAssignment } from "../actions";
 import { ShowToast } from "@/components/show-toast";
 import { PasswordInput } from "@/components/password-input";
+import { TempPasswordBadge } from "@/components/temp-password-badge";
 
 export const metadata = { title: "Teacher" };
 
@@ -94,6 +95,9 @@ export default async function TeacherPage({
                 {teacher.user ? "Reset password" : "Create login"}
               </button>
             </form>
+            {teacher.user?.tempPassword && (
+              <TempPasswordBadge password={teacher.user.tempPassword} />
+            )}
           </div>
 
           <SignatureCard teacherId={teacher.id} asset={teacher.signatureAsset} />

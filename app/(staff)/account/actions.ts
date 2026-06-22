@@ -38,7 +38,7 @@ export async function changeOwnPassword(formData: FormData) {
 
   await prisma.user.update({
     where: { id: session.userId },
-    data: { passwordHash: bcrypt.hashSync(next, 10) },
+    data: { passwordHash: bcrypt.hashSync(next, 10), tempPassword: null },
   });
   redirect(`${dest}?saved=password`);
 }

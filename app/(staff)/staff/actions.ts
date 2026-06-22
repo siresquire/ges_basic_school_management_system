@@ -113,7 +113,7 @@ export async function setTeacherLogin(teacherId: string, formData: FormData) {
   if (teacher.userId) {
     await prisma.user.update({
       where: { id: teacher.userId },
-      data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true },
+      data: { username, passwordHash: bcrypt.hashSync(password, 10), active: true, tempPassword: password },
     });
   } else {
     const user = await prisma.user.create({
@@ -122,6 +122,7 @@ export async function setTeacherLogin(teacherId: string, formData: FormData) {
         passwordHash: bcrypt.hashSync(password, 10),
         name: `${teacher.firstName} ${teacher.lastName}`,
         role: "TEACHER",
+        tempPassword: password,
       },
     });
     await prisma.teacher.update({ where: { id: teacherId }, data: { userId: user.id } });

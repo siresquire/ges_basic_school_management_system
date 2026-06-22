@@ -56,6 +56,7 @@ export async function createSuperAdmin(formData: FormData) {
       name,
       passwordHash: bcrypt.hashSync(password, 10),
       role: "SUPER_ADMIN",
+      tempPassword: password,
     },
   });
 
@@ -99,7 +100,7 @@ export async function resetSuperAdminPassword(userId: string, formData: FormData
   if (password.length < 6) redirect("/super-admin?error=password");
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash: bcrypt.hashSync(password, 10) },
+    data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password },
   });
   redirect("/super-admin?saved=password");
 }
@@ -119,7 +120,7 @@ export async function createAdminAccount(formData: FormData) {
   ).join(",");
 
   await prisma.user.create({
-    data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN", assignedLevels },
+    data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN", assignedLevels, tempPassword: password },
   });
   revalidatePath("/super-admin");
   redirect("/super-admin?saved=admin");
@@ -139,7 +140,7 @@ export async function resetAdminPassword(userId: string, formData: FormData) {
   await requireSuperAdmin();
   const password = String(formData.get("password") ?? "");
   if (password.length < 6) redirect("/super-admin?error=password");
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash: bcrypt.hashSync(password, 10) } });
+  await prisma.user.update({ where: { id: userId }, data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password } });
   redirect("/super-admin?saved=password");
 }
 

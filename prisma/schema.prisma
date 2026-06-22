@@ -28,6 +28,7 @@ model User {
   active         Boolean  @default(true)
   assignedLevels String   @default("")
   createdAt      DateTime @default(now())
+  tempPassword   String?
 
   teacher        Teacher?
   studentProfile Student?  @relation("StudentAccount")
