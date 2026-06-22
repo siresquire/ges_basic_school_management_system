@@ -3,7 +3,7 @@ import { buildStaffTemplate } from "@/lib/excel";
 
 export async function GET() {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") {
+  if (!session || (session.role !== "ADMIN" && session.role !== "SUPER_ADMIN")) {
     return new Response("Not allowed", { status: 403 });
   }
   const buffer = await buildStaffTemplate();
