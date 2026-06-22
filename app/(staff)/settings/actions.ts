@@ -270,7 +270,7 @@ export async function createAdminUser(formData: FormData) {
   if (taken) redirect("/settings?error=adminusername");
 
   await prisma.user.create({
-    data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN" },
+    data: { username, name, passwordHash: bcrypt.hashSync(password, 10), role: "ADMIN", tempPassword: password },
   });
   revalidatePath("/settings");
   redirect("/settings?saved=admin");
@@ -286,7 +286,7 @@ export async function adminResetPassword(userId: string, formData: FormData) {
   if (password.length < 6) redirect("/settings?error=password");
   await prisma.user.update({
     where: { id: userId },
-    data: { passwordHash: bcrypt.hashSync(password, 10) },
+    data: { passwordHash: bcrypt.hashSync(password, 10), tempPassword: password },
   });
   redirect("/settings?saved=password");
 }

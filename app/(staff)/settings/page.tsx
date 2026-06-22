@@ -22,6 +22,8 @@ import {
   saveGradeBands,
 } from "./actions";
 import { ShowToast } from "@/components/show-toast";
+import { PasswordInput } from "@/components/password-input";
+import { TempPasswordBadge } from "@/components/temp-password-badge";
 
 export const metadata = { title: "Settings" };
 
@@ -547,15 +549,13 @@ export default async function SettingsPage({
                   </td>
                   <td>
                     {viewerCanManage ? (
-                      <form action={adminResetPassword.bind(null, u.id)} className="flex gap-2">
-                        <input
-                          name="password"
-                          type="text"
-                          className="input max-w-40 py-1 text-xs"
-                          placeholder="New password"
-                        />
-                        <button className="btn-secondary btn-sm">Set</button>
-                      </form>
+                      <>
+                        <form action={adminResetPassword.bind(null, u.id)} className="flex gap-2">
+                          <PasswordInput name="password" compact minLength={6} />
+                          <button className="btn-secondary btn-sm">Set</button>
+                        </form>
+                        {u.tempPassword && <TempPasswordBadge password={u.tempPassword} />}
+                      </>
                     ) : (
                       <span className="text-xs text-gray-400">Managed via System page</span>
                     )}
@@ -589,7 +589,7 @@ export default async function SettingsPage({
             </div>
             <div>
               <label className="label">Password</label>
-              <input name="password" type="text" className="input" placeholder="Min 6 characters" />
+              <PasswordInput name="password" required minLength={6} />
             </div>
             <button className="btn-primary">Create admin</button>
             <p className="basis-full text-xs text-gray-500">
