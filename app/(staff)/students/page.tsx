@@ -8,6 +8,7 @@ import { getAdminLevels, levelStageFilter, classStageFilter } from "@/lib/admin-
 import FilterForm from "@/components/filter-form";
 import Icon from "@/components/icon";
 import { TempPasswordCell } from "@/components/temp-password-cell";
+import { DownloadButton } from "@/components/download-button";
 
 export const metadata = { title: "Students" };
 
@@ -77,28 +78,28 @@ export default async function StudentsPage({
         {(scope.isAdmin || scope.classTeacherOf.length > 0) && (
           <div className="flex flex-wrap gap-2">
             {scope.isAdmin && noStudentLogin > 0 && (
-              <a href="/students/bulk-logins" className="btn-secondary flex items-center gap-1.5">
+              <DownloadButton href="/students/bulk-logins" className="btn-secondary flex items-center gap-1.5" loadingText="Generating…">
                 <Icon name="excel" />
                 Student logins ({noStudentLogin})
-              </a>
+              </DownloadButton>
             )}
             {scope.isAdmin && noParentLogin > 0 && (
-              <a href="/students/bulk-parent-logins" className="btn-secondary flex items-center gap-1.5">
+              <DownloadButton href="/students/bulk-parent-logins" className="btn-secondary flex items-center gap-1.5" loadingText="Generating…">
                 <Icon name="excel" />
                 Parent logins ({noParentLogin})
-              </a>
+              </DownloadButton>
             )}
             {scope.isAdmin && hasStudentTempPasswords && (
-              <a href="/students/current-passwords" className="btn-secondary flex items-center gap-1.5">
+              <DownloadButton href="/students/current-passwords" className="btn-secondary flex items-center gap-1.5" loadingText="Preparing…">
                 <Icon name="excel" />
                 Student passwords
-              </a>
+              </DownloadButton>
             )}
             {scope.isAdmin && hasParentTempPasswords && (
-              <a href="/students/parent-current-passwords" className="btn-secondary flex items-center gap-1.5">
+              <DownloadButton href="/students/parent-current-passwords" className="btn-secondary flex items-center gap-1.5" loadingText="Preparing…">
                 <Icon name="excel" />
                 Parent passwords
-              </a>
+              </DownloadButton>
             )}
             <Link href="/excel" className="btn-secondary">
               <Icon name="excel" />

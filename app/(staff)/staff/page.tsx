@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { getAdminLevels } from "@/lib/admin-scope";
 import Icon from "@/components/icon";
 import { TempPasswordCell } from "@/components/temp-password-cell";
+import { DownloadButton } from "@/components/download-button";
 
 export const metadata = { title: "Staff" };
 
@@ -11,16 +12,11 @@ export default async function StaffPage() {
   const session = await requireAdmin();
   const adminLevels = await getAdminLevels(session);
 
-  // Level-restricted admins see only teachers assigned to their levels.
-  // Teachers with no levels set (levels = "") are visible to everyone — they
-  // haven't been classified yet.
+  // Level-restricted admins see only teachers explicitly assigned to their levels.
+  // Unrestricted admins (Super Admin or all-levels admin) see everyone including
+  // teachers whose levels haven't been set yet.
   const levelWhere = adminLevels
-    ? {
-        OR: [
-          { levels: "" },
-          ...adminLevels.map((l) => ({ levels: { contains: l } })),
-        ],
-      }
+    ? { OR: adminLevels.map((l) => ({ levels: { contains: l } })) }
     : {};
 
   const teachers = await prisma.teacher.findMany({
@@ -42,16 +38,24 @@ export default async function StaffPage() {
         <h1 className="page-title">Staff</h1>
         <div className="flex flex-wrap gap-2">
           {noLoginCount > 0 && (
-            <a href="/staff/bulk-logins" className="btn-secondary flex items-center gap-1.5">
+            <DownloadButton
+              href="/staff/bulk-logins"
+              className="btn-secondary flex items-center gap-1.5"
+              loadingText="Generating…"
+            >
               <Icon name="excel" />
               Generate logins ({noLoginCount})
-            </a>
+            </DownloadButton>
           )}
           {hasTempPasswords && (
-            <a href="/staff/current-passwords" className="btn-secondary flex items-center gap-1.5">
+            <DownloadButton
+              href="/staff/current-passwords"
+              className="btn-secondary flex items-center gap-1.5"
+              loadingText="Preparing…"
+            >
               <Icon name="excel" />
               Download passwords
-            </a>
+            </DownloadButton>
           )}
           <Link href="/excel" className="btn-secondary">
             <Icon name="excel" />

@@ -32,7 +32,9 @@ export default async function ClassesPage({
   const isAdmin = session.role === "ADMIN" || session.role === "SUPER_ADMIN";
   const { saved, error } = await searchParams;
 
-  const [allClasses, teachers, scope, enabledLevels, adminLevels] = await Promise.all([
+  const adminLevels = await getAdminLevels(session);
+
+  const [allClasses, teachers, scope, enabledLevels] = await Promise.all([
     prisma.classGroup.findMany({
       orderBy: [{ level: "asc" }, { name: "asc" }],
       include: {
@@ -41,13 +43,17 @@ export default async function ClassesPage({
       },
     }),
     prisma.teacher.findMany({
-      where: { status: "ACTIVE" },
+      where: {
+        status: "ACTIVE",
+        // Restricted admins only see teachers in their levels.
+        // Unrestricted admins see everyone (including unclassified teachers).
+        ...(adminLevels ? { OR: adminLevels.map((l) => ({ levels: { contains: l } })) } : {}),
+      },
       orderBy: { firstName: "asc" },
       select: { id: true, firstName: true, lastName: true, levels: true },
     }),
     getTeacherScope(session),
     getEnabledLevels(),
-    getAdminLevels(session),
   ]);
   const allowedStages = adminLevels ?? enabledLevels;
   const classes = filterClasses(scope, allClasses).filter((c) => allowedStages.includes(c.stage));
