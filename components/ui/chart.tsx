@@ -98,6 +98,14 @@ function ChartStyle({ id, config }: { id: string; config: ChartConfig }) {
 
 export const ChartTooltip = RechartsPrimitive.Tooltip;
 
+type TPayloadItem = {
+  value?: unknown;
+  name?: string;
+  dataKey?: string | number;
+  color?: string;
+  payload?: Record<string, unknown>;
+};
+
 export function ChartTooltipContent({
   active,
   payload,
@@ -112,19 +120,27 @@ export function ChartTooltipContent({
   color,
   className,
   labelClassName,
-}: React.ComponentProps<typeof RechartsPrimitive.Tooltip> & {
+}: {
+  active?: boolean;
+  payload?: TPayloadItem[];
+  label?: string | number;
+  labelFormatter?: (label: React.ReactNode, payload: TPayloadItem[]) => React.ReactNode;
+  labelKey?: string;
+  nameKey?: string;
+  formatter?: (value: unknown, name: string, item: TPayloadItem, index: number, payload: TPayloadItem[]) => React.ReactNode;
   hideLabel?: boolean;
   hideIndicator?: boolean;
   indicator?: "dot" | "line" | "dashed";
-  nameKey?: string;
-  labelKey?: string;
+  color?: string;
+  className?: string;
+  labelClassName?: string;
 }) {
   const { config } = useChart();
 
   const tooltipLabel = React.useMemo(() => {
     if (hideLabel || !payload?.length) return null;
-    const [item] = payload as { dataKey?: string; name?: string; payload?: Record<string, unknown> }[];
-    const key = labelKey ?? (item.dataKey as string) ?? item.name ?? "value";
+    const [item] = payload;
+    const key = labelKey ?? String(item.dataKey ?? "") ?? item.name ?? "value";
     const cfgEntry = config[key];
     const value =
       !labelKey && typeof label === "string"
@@ -150,20 +166,20 @@ export function ChartTooltipContent({
     >
       {!nestLabel && tooltipLabel}
       <div className="grid gap-1.5">
-        {(payload as { value?: unknown; name?: string; dataKey?: string; color?: string; payload?: Record<string, unknown> }[]).map((item, idx) => {
-          const key = nameKey ?? item.name ?? (item.dataKey as string) ?? "value";
+        {payload.map((item, idx) => {
+          const key = nameKey ?? item.name ?? String(item.dataKey ?? "") ?? "value";
           const cfgEntry = config[key];
           const dotColor = color ?? (item.payload?.fill as string) ?? item.color;
           return (
             <div
-              key={item.dataKey ?? idx}
+              key={String(item.dataKey ?? idx)}
               className={cn(
                 "flex w-full items-center gap-2",
                 indicator === "dot" && "items-center"
               )}
             >
               {formatter && item.value !== undefined && item.name ? (
-                formatter(item.value as number, item.name, item as never, idx, item.payload as never)
+                formatter(item.value, item.name, item, idx, payload)
               ) : (
                 <>
                   {cfgEntry?.icon ? (
