@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* shadcn chart CSS variables — mapped to the school's colour palette */
+:root {
+  --chart-1: 163 94% 24%;   /* emerald-700 */
+  --chart-2: 201 90% 33%;   /* sky-600     */
+  --chart-3: 38 92% 50%;    /* amber-500   */
+  --chart-4: 262 83% 58%;   /* violet-500  */
+  --chart-5: 0 84% 60%;     /* red-500     */
+  --muted-foreground: 215 16% 47%;
+}
+
 body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
