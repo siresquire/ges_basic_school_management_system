@@ -188,7 +188,7 @@ export function DonutChart({
                 const pct = Math.round((Number(value) / total) * 100);
                 return (
                   <span className="font-mono font-medium">
-                    {value} <span className="text-gray-400">({pct}%)</span>
+                    {String(value)} <span className="text-gray-400">({pct}%)</span>
                   </span>
                 );
               }}
