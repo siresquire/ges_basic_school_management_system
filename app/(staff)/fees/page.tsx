@@ -8,6 +8,7 @@ import { getAdminLevels } from "@/lib/admin-scope";
 import FilterForm from "@/components/filter-form";
 import { addFeeItem, deleteFeeItem, recordPayment } from "./actions";
 import { ShowToast } from "@/components/show-toast";
+import { ConfirmForm } from "@/components/confirm-form";
 
 export const metadata = { title: "Fees" };
 
@@ -134,11 +135,16 @@ export default async function FeesPage({
                   <td>{f.classGroup?.name ?? "All classes"}</td>
                   <td>{ghs(f.amount)}</td>
                   <td className="text-right">
-                    <form action={deleteFeeItem.bind(null, f.id, termId)}>
+                    <ConfirmForm
+                      action={deleteFeeItem.bind(null, f.id, termId)}
+                      confirmTitle="Remove this fee item?"
+                      confirmText={`"${f.name}" will be removed from this term's fee schedule.`}
+                      confirmButtonText="Yes, remove it"
+                    >
                       <button className="text-xs text-red-600 hover:underline cursor-pointer">
                         Remove
                       </button>
-                    </form>
+                    </ConfirmForm>
                   </td>
                 </tr>
               ))}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import Icon from "@/components/icon";
+import { ConfirmButton } from "@/components/confirm-button";
 import {
   DndContext,
   closestCenter,
@@ -131,14 +132,17 @@ function SortableRow({ c, teachers, enabledStages }: { c: ClassItem; teachers: T
           <button form={`class-${c.id}`} className="btn-secondary btn-sm" title="Save changes">
             <Icon name="save" />
           </button>
-          <button
+          <ConfirmButton
             form={`class-${c.id}`}
             formAction={deleteClass.bind(null, c.id)}
             className="btn-danger btn-sm"
             title="Delete class"
+            confirmTitle="Delete this class?"
+            confirmText="All associated records (scores, attendance, report cards) will be lost."
+            confirmButtonText="Yes, delete class"
           >
             <Icon name="trash" />
-          </button>
+          </ConfirmButton>
         </div>
       </td>
       <td>

@@ -2,7 +2,15 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useToast, type ToastType } from "@/components/toast-provider";
+import { SwalToast } from "@/lib/swal";
+
+export type ToastType = "success" | "error" | "warn";
+
+const ICON: Record<ToastType, "success" | "error" | "warning"> = {
+  success: "success",
+  error: "error",
+  warn: "warning",
+};
 
 export function ShowToast({
   message,
@@ -11,11 +19,10 @@ export function ShowToast({
   message: string;
   type?: ToastType;
 }) {
-  const { show } = useToast();
   const router = useRouter();
 
   useEffect(() => {
-    show(message, type);
+    SwalToast.fire({ icon: ICON[type], title: message });
     const url = new URL(window.location.href);
     url.searchParams.delete("saved");
     url.searchParams.delete("error");

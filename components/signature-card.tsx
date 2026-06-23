@@ -1,6 +1,7 @@
 import { dataUrl } from "@/lib/images";
 import { uploadTeacherSignature, removeTeacherSignature } from "@/app/(staff)/staff/actions";
 import FileInput from "@/components/file-input";
+import { ConfirmForm } from "@/components/confirm-form";
 
 /** Upload/preview/remove a teacher's scanned signature (admin or the teacher themself). */
 export default function SignatureCard({
@@ -36,11 +37,17 @@ export default function SignatureCard({
         </button>
       </form>
       {url && (
-        <form action={removeTeacherSignature.bind(null, teacherId)} className="mt-2">
+        <ConfirmForm
+          action={removeTeacherSignature.bind(null, teacherId)}
+          className="mt-2"
+          confirmTitle="Remove signature?"
+          confirmText="The signature will no longer appear on report cards."
+          confirmButtonText="Yes, remove it"
+        >
           <button className="text-xs text-red-600 hover:underline cursor-pointer">
             Remove signature
           </button>
-        </form>
+        </ConfirmForm>
       )}
     </div>
   );

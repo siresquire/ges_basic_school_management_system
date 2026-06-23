@@ -6,6 +6,7 @@ import TeacherForm from "@/components/teacher-form";
 import SignatureCard from "@/components/signature-card";
 import { updateTeacher, setTeacherLogin, addAssignment, removeAssignment } from "../actions";
 import { ShowToast } from "@/components/show-toast";
+import { ConfirmForm } from "@/components/confirm-form";
 import { PasswordInput } from "@/components/password-input";
 import { TempPasswordBadge } from "@/components/temp-password-badge";
 
@@ -125,9 +126,14 @@ export default async function TeacherPage({
                 <td>{a.classGroup.name}</td>
                 <td>{a.subject.name}</td>
                 <td className="text-right">
-                  <form action={removeAssignment.bind(null, a.id, teacher.id)}>
+                  <ConfirmForm
+                    action={removeAssignment.bind(null, a.id, teacher.id)}
+                    confirmTitle="Remove this assignment?"
+                    confirmText={`${a.subject.name} in ${a.classGroup.name} will be removed from this teacher.`}
+                    confirmButtonText="Yes, remove it"
+                  >
                     <button className="text-xs text-red-600 hover:underline cursor-pointer">Remove</button>
-                  </form>
+                  </ConfirmForm>
                 </td>
               </tr>
             ))}

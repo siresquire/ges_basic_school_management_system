@@ -3,7 +3,6 @@ import { hasLogo } from "@/lib/images";
 import { getSchoolInfo } from "@/lib/cached";
 import { getSchoolConfig } from "@/lib/school-config";
 import Sidebar from "@/components/sidebar";
-import { ToastProvider } from "@/components/toast-provider";
 import { ImpersonationBanner } from "@/components/impersonation-banner";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +21,7 @@ export default async function StaffLayout({
   ]);
 
   return (
-    <ToastProvider>
+    <>
       {impersonator && (
         <ImpersonationBanner impersonated={session} impersonator={impersonator} />
       )}
@@ -41,6 +40,6 @@ export default async function StaffLayout({
         />
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
-    </ToastProvider>
+    </>
   );
 }

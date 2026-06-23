@@ -20,6 +20,8 @@ import {
   saveGradeBands,
 } from "./actions";
 import { ShowToast } from "@/components/show-toast";
+import { ConfirmForm } from "@/components/confirm-form";
+import { ConfirmButton } from "@/components/confirm-button";
 import { PasswordInput } from "@/components/password-input";
 import { AccountsTable, type AccountRow } from "@/components/accounts-table";
 
@@ -250,9 +252,15 @@ export default async function SettingsPage({
               <button className="btn-primary btn-sm">Upload logo</button>
             </form>
             {logoUrl && (
-              <form action={removeLogo} className="mt-2">
+              <ConfirmForm
+                action={removeLogo}
+                className="mt-2"
+                confirmTitle="Remove school logo?"
+                confirmText="The logo will be removed from all report cards and the sidebar."
+                confirmButtonText="Yes, remove it"
+              >
                 <button className="text-xs text-red-600 hover:underline cursor-pointer">Remove logo</button>
-              </form>
+              </ConfirmForm>
             )}
           </div>
           {showPrimarySection && (
@@ -271,9 +279,15 @@ export default async function SettingsPage({
                 <button className="btn-primary btn-sm">Upload</button>
               </form>
               {headSigUrl && (
-                <form action={removeHeadSignature.bind(null, "PRIMARY")} className="mt-2">
+                <ConfirmForm
+                  action={removeHeadSignature.bind(null, "PRIMARY")}
+                  className="mt-2"
+                  confirmTitle="Remove headteacher signature?"
+                  confirmText="The signature will no longer appear on KG & Primary report cards."
+                  confirmButtonText="Yes, remove it"
+                >
                   <button className="text-xs text-red-600 hover:underline cursor-pointer">Remove signature</button>
-                </form>
+                </ConfirmForm>
               )}
             </div>
           )}
@@ -293,9 +307,15 @@ export default async function SettingsPage({
                 <button className="btn-primary btn-sm">Upload</button>
               </form>
               {jhsSigUrl && (
-                <form action={removeHeadSignature.bind(null, "JHS")} className="mt-2">
+                <ConfirmForm
+                  action={removeHeadSignature.bind(null, "JHS")}
+                  className="mt-2"
+                  confirmTitle="Remove JHS head signature?"
+                  confirmText="The signature will no longer appear on JHS report cards."
+                  confirmButtonText="Yes, remove it"
+                >
                   <button className="text-xs text-red-600 hover:underline cursor-pointer">Remove signature</button>
-                </form>
+                </ConfirmForm>
               )}
             </div>
           )}
@@ -487,15 +507,18 @@ export default async function SettingsPage({
                       <button form={`subject-${s.id}`} className="btn-secondary btn-sm">
                         Save
                       </button>
-                      <button
+                      <ConfirmButton
                         form={`subject-${s.id}`}
                         formAction={deleteSubject.bind(null, s.id)}
                         className="btn-danger btn-sm"
                         disabled={s._count.scores > 0}
                         title={s._count.scores > 0 ? "Has recorded scores — untick its stages to retire it" : undefined}
+                        confirmTitle={`Delete "${s.name}"?`}
+                        confirmText="This subject will be removed from all class timetables and assignments."
+                        confirmButtonText="Yes, delete subject"
                       >
                         Delete
-                      </button>
+                      </ConfirmButton>
                     </div>
                   </td>
                 </tr>
