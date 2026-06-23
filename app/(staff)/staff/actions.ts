@@ -117,7 +117,13 @@ export async function updateTeacher(teacherId: string, formData: FormData) {
     if (dup && dup.id !== teacherId) redirect(`/staff/${teacherId}?error=staffid`);
   }
 
-  await prisma.teacher.update({ where: { id: teacherId }, data: { ...data, status } });
+  const updated = await prisma.teacher.update({ where: { id: teacherId }, data: { ...data, status } });
+  if (updated.userId) {
+    await prisma.user.update({
+      where: { id: updated.userId },
+      data: { name: `${data.firstName} ${data.lastName}` },
+    });
+  }
   await log({ actorUserId: session.userId, actorName: session.name, action: "TEACHER_UPDATE", detail: `Updated teacher ${data.firstName} ${data.lastName}` });
   revalidatePath("/staff");
   redirect(`/staff/${teacherId}?saved=1`);

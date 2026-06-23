@@ -200,7 +200,7 @@ export default async function StudentsPage({
               <tr key={s.id}>
                 <td className="font-mono text-xs">{s.admissionNo}</td>
                 <td>
-                  <Link href={`/students/${s.id}`} className="font-medium text-emerald-700 hover:underline">
+                  <Link href={`/students/${s.id}`} className="font-medium uppercase text-emerald-700 hover:underline">
                     {studentName(s)}
                   </Link>
                 </td>

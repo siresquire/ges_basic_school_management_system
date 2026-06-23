@@ -130,7 +130,7 @@ export function ObserveAsSection({ users }: { users: UserRow[] }) {
                     .filter(Boolean);
                   return (
                     <tr key={u.id}>
-                      <td className="font-medium">{u.name}</td>
+                      <td className="font-medium uppercase">{u.name}</td>
                       <td className="font-mono text-xs text-gray-500">{u.username}</td>
                       <td>
                         <span className={ROLE_BADGE[u.role] ?? "badge-gray"}>

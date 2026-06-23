@@ -17,11 +17,13 @@ export type TeacherScope = {
   taughtClassIds: string[];
   /** Subject assignments per class. */
   subjectsByClass: Record<string, string[]>;
+  /** The teacher's own assigned levels (empty for admins). */
+  ownLevels: string[];
 };
 
 export async function getTeacherScope(session: Session): Promise<TeacherScope> {
   if (session.role === "ADMIN" || session.role === "SUPER_ADMIN") {
-    return { isAdmin: true, teacherId: null, classTeacherOf: [], taughtClassIds: [], subjectsByClass: {} };
+    return { isAdmin: true, teacherId: null, classTeacherOf: [], taughtClassIds: [], subjectsByClass: {}, ownLevels: [] };
   }
   const teacher = await prisma.teacher.findFirst({
     where: { userId: session.userId },
@@ -33,7 +35,8 @@ export async function getTeacherScope(session: Session): Promise<TeacherScope> {
     (subjectsByClass[a.classGroupId] ??= []).push(a.subjectId);
   }
   const taughtClassIds = [...new Set([...classTeacherOf, ...Object.keys(subjectsByClass)])];
-  return { isAdmin: false, teacherId: teacher?.id ?? null, classTeacherOf, taughtClassIds, subjectsByClass };
+  const ownLevels = (teacher?.levels ?? "").split(",").filter(Boolean);
+  return { isAdmin: false, teacherId: teacher?.id ?? null, classTeacherOf, taughtClassIds, subjectsByClass, ownLevels };
 }
 
 /** May see this class and its data (scores, reports, students…). */

@@ -24,6 +24,8 @@ export default async function DashboardPage() {
 
   const teacherLevelWhere = adminLevels
     ? { OR: adminLevels.map((l) => ({ levels: { contains: l } })) }
+    : !scope.isAdmin && scope.ownLevels.length > 0
+    ? { OR: scope.ownLevels.map((l) => ({ levels: { contains: l } })) }
     : {};
 
   // Fetch classes first so we can derive class IDs for attendance query.

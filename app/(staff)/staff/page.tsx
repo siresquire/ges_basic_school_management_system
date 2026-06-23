@@ -74,6 +74,7 @@ export default async function StaffPage() {
             <tr>
               <th>Staff ID</th>
               <th>Name</th>
+              <th>Level</th>
               <th>Phone</th>
               <th>Class teacher of</th>
               <th>Subjects</th>
@@ -83,14 +84,18 @@ export default async function StaffPage() {
             </tr>
           </thead>
           <tbody>
-            {teachers.map((t) => (
+            {teachers.map((t) => {
+              const LEVEL_LABEL: Record<string, string> = { CRECHE: "Creche", KG: "KG", PRIMARY: "Primary", JHS: "JHS" };
+              const levelDisplay = (t.levels ?? "").split(",").filter(Boolean).map((l) => LEVEL_LABEL[l] ?? l).join(", ") || "—";
+              return (
               <tr key={t.id}>
                 <td className="font-mono text-xs">{t.staffId ?? "—"}</td>
                 <td>
-                  <Link href={`/staff/${t.id}`} className="font-medium text-emerald-700 hover:underline">
+                  <Link href={`/staff/${t.id}`} className="font-medium uppercase text-emerald-700 hover:underline">
                     {t.firstName} {t.lastName}
                   </Link>
                 </td>
+                <td className="text-sm text-gray-600">{levelDisplay}</td>
                 <td>{t.phone ?? "—"}</td>
                 <td>{t.classTeacherOf.map((c) => c.name).join(", ") || "—"}</td>
                 <td>{t._count.assignments}</td>
@@ -104,10 +109,10 @@ export default async function StaffPage() {
                   <span className={t.status === "ACTIVE" ? "badge-green" : "badge-gray"}>{t.status}</span>
                 </td>
               </tr>
-            ))}
+            ); })}
             {teachers.length === 0 && (
               <tr>
-                <td colSpan={8} className="py-8 text-center text-gray-500">
+                <td colSpan={9} className="py-8 text-center text-gray-500">
                   No teachers yet.
                 </td>
               </tr>
