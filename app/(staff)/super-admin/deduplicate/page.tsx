@@ -84,7 +84,6 @@ export default async function DeduplicatePage({
         d._count.termAttendance === 0 &&
         d._count.payments === 0 &&
         d._count.reportRemarks === 0 &&
-        d.userId === null &&
         d.parentUserId === null;
       if (safe) row.safeToRemove++;
       else row.blocked++;
@@ -105,8 +104,9 @@ export default async function DeduplicatePage({
         <h1 className="page-title">Deduplicate Students</h1>
         <p className="mt-1 text-sm text-gray-500">
           Removes duplicate entries caused by uploading the same class Excel sheet multiple times.
-          Only rows with no scores, attendance, payments, or report data are removed — rows with
-          existing data are left untouched.
+          Duplicates with no scores, attendance, payments, or report data are removed (including
+          their auto-created portal logins). Duplicates that have academic data recorded against
+          them are skipped — those must be resolved manually.
         </p>
       </div>
 
@@ -129,7 +129,7 @@ export default async function DeduplicatePage({
                 <th className="text-right">Total entries</th>
                 <th className="text-right">Unique students</th>
                 <th className="text-right">Safe to remove</th>
-                <th className="text-right">Has data (skipped)</th>
+                <th className="text-right">Has scores/payments (skipped)</th>
                 <th></th>
               </tr>
             </thead>

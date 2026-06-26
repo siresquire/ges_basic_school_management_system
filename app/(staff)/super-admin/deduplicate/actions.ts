@@ -36,7 +36,7 @@ export async function deduplicateClass(formData: FormData) {
 
   // Group by normalized full name — keep the first entry (lowest admissionNo)
   const seen = new Map<string, string>(); // nameKey -> first student id
-  const toDelete: string[] = [];
+  const toDelete: { id: string; userId: string | null }[] = [];
   const blocked: string[] = [];
 
   for (const s of students) {
@@ -50,23 +50,27 @@ export async function deduplicateClass(formData: FormData) {
       continue;
     }
 
-    // This is a duplicate — only delete if it has no linked data
+    // Safe to remove if no academic data — auto-created portal login is also cleaned up.
     const safe =
       s._count.scores === 0 &&
       s._count.attendance === 0 &&
       s._count.termAttendance === 0 &&
       s._count.payments === 0 &&
       s._count.reportRemarks === 0 &&
-      s.userId === null &&
       s.parentUserId === null;
 
-    if (safe) toDelete.push(s.id);
+    if (safe) toDelete.push({ id: s.id, userId: s.userId });
     else blocked.push(s.id);
   }
 
   if (toDelete.length > 0) {
-    await prisma.student.deleteMany({ where: { id: { in: toDelete } } });
-    await log({ actorUserId: session.userId, actorName: session.name, action: "STUDENT_DEDUP", detail: `Removed ${toDelete.length} duplicate entries from class "${cls?.name ?? classId}"` });
+    const ids = toDelete.map((s) => s.id);
+    const userIds = toDelete.map((s) => s.userId).filter((id): id is string => id !== null);
+    await prisma.student.deleteMany({ where: { id: { in: ids } } });
+    if (userIds.length > 0) {
+      await prisma.user.deleteMany({ where: { id: { in: userIds } } });
+    }
+    await log({ actorUserId: session.userId, actorName: session.name, action: "STUDENT_DEDUP", detail: `Removed ${ids.length} duplicate entries from class "${cls?.name ?? classId}"` });
   }
 
   redirect(`/super-admin/deduplicate?done=${toDelete.length}`);

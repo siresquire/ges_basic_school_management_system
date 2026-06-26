@@ -188,13 +188,25 @@ export async function importStudentsFromBuffer(
   const classes = await prisma.classGroup.findMany();
   const classByName = new Map(classes.map((c) => [c.name.toLowerCase(), c]));
 
-  // Next auto admission number.
-  const last = await prisma.student.findFirst({
-    orderBy: { admissionNo: "desc" },
-    where: { admissionNo: { startsWith: "AKW-" } },
-  });
-  let nextNum = last ? parseInt(last.admissionNo.replace("AKW-", ""), 10) : 0;
-  if (isNaN(nextNum)) nextNum = 0;
+  // Pre-load ALL existing admission numbers — avoids a per-row findUnique query.
+  const seenAdmission = new Set<string>(
+    (await prisma.student.findMany({ select: { admissionNo: true } })).map((s) => s.admissionNo)
+  );
+  // Derive the next auto-number from the pre-loaded set.
+  const lastNums = [...seenAdmission]
+    .map((a) => parseInt(a.replace("AKW-", ""), 10))
+    .filter((n) => !isNaN(n));
+  let nextNum = lastNums.length > 0 ? Math.max(...lastNums) : 0;
+
+  // Pre-load existing active students by name+class — lets us skip re-uploads without
+  // an admission number in the file (the common timeout/re-upload scenario).
+  const existingByNameClass = new Set<string>(
+    (await prisma.student.findMany({
+      where: { status: "ACTIVE", classGroupId: { not: null } },
+      select: { firstName: true, lastName: true, classGroupId: true },
+    })).map((s) => `${s.firstName}|${s.lastName}|${s.classGroupId}`)
+  );
+  const seenNameClass = new Set<string>(); // tracks name+class pairs seen within this file
 
   // Pre-load taken usernames once so per-row lookups are O(1).
   const takenUsernames = new Set(
@@ -204,7 +216,6 @@ export async function importStudentsFromBuffer(
   let created = 0;
   let skipped = 0;
   const details: string[] = [];
-  const seenAdmission = new Set<string>();
 
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
@@ -234,20 +245,29 @@ export async function importStudentsFromBuffer(
       continue;
     }
 
-    let admissionNo = strVal(row.getCell(1).value);
-    if (!admissionNo) admissionNo = `AKW-${String(++nextNum).padStart(4, "0")}`;
+    const rawAdmission = strVal(row.getCell(1).value);
+
+    // No admission number in file — deduplicate by name+class so re-uploading after
+    // a timeout doesn't create extra records for already-uploaded students.
+    if (!rawAdmission && classGroup) {
+      const nameClassKey = `${firstName}|${lastName}|${classGroup.id}`;
+      if (existingByNameClass.has(nameClassKey) || seenNameClass.has(nameClassKey)) {
+        skipped++;
+        details.push(`Row ${r}: ${firstName} ${lastName} already in ${classGroup.name} — skipped.`);
+        continue;
+      }
+      seenNameClass.add(nameClassKey);
+    }
+
+    const admissionNo = rawAdmission || `AKW-${String(++nextNum).padStart(4, "0")}`;
     if (seenAdmission.has(admissionNo)) {
-      details.push(`Row ${r}: admission number ${admissionNo} appears twice in the file — skipped.`);
+      skipped++;
+      details.push(rawAdmission
+        ? `Row ${r}: ${admissionNo} already exists (${firstName} ${lastName}) — skipped.`
+        : `Row ${r}: ${firstName} ${lastName} — admission number collision, skipped.`);
       continue;
     }
     seenAdmission.add(admissionNo);
-
-    const existing = await prisma.student.findUnique({ where: { admissionNo } });
-    if (existing) {
-      skipped++;
-      details.push(`Row ${r}: ${admissionNo} already exists (${studentName(existing)}) — skipped.`);
-      continue;
-    }
 
     const student = await prisma.student.create({
       data: {
@@ -278,6 +298,7 @@ export async function importStudentsFromBuffer(
       },
     });
     await prisma.student.update({ where: { id: student.id }, data: { userId: autoUser.id } });
+    if (classGroup) existingByNameClass.add(`${firstName}|${lastName}|${classGroup.id}`);
 
     created++;
   }
