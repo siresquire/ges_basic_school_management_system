@@ -1,16 +1,25 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import Swal from "@/lib/swal";
+
+// Closes the loading Swal as soon as the Server Action's pending state drops to false.
+// Must live INSIDE the <form> so useFormStatus can see the form's submission state.
+function SubmitWatcher() {
+  const { pending } = useFormStatus();
+  const prev = useRef(false);
+  useEffect(() => {
+    if (prev.current && !pending) Swal.close();
+    prev.current = pending;
+  }, [pending]);
+  return null;
+}
 
 type Props = React.ComponentProps<"form"> & {
   loadingTitle?: string;
 };
 
-/**
- * Drop-in replacement for <form> on slow server actions that redirect.
- * Shows a SweetAlert2 loading spinner on submit so users know work is happening.
- * The popup closes automatically when the page navigates after the action.
- */
 export function ProcessingForm({ loadingTitle = "Processing…", children, ...props }: Props) {
   function handleSubmit() {
     Swal.fire({
@@ -24,6 +33,7 @@ export function ProcessingForm({ loadingTitle = "Processing…", children, ...pr
 
   return (
     <form {...props} onSubmit={handleSubmit}>
+      <SubmitWatcher />
       {children}
     </form>
   );

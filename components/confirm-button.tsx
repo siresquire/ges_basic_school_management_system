@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import Swal, { SwalConfirm } from "@/lib/swal";
 
 type Props = React.ComponentProps<"button"> & {
@@ -25,6 +26,12 @@ export function ConfirmButton({
 }: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const confirmed = useRef(false);
+  const { pending } = useFormStatus();
+  const prevPending = useRef(false);
+  useEffect(() => {
+    if (prevPending.current && !pending) Swal.close();
+    prevPending.current = pending;
+  }, [pending]);
 
   async function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
     if (confirmed.current) {

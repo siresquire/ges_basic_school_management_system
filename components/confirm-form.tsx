@@ -1,7 +1,18 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import { useFormStatus } from "react-dom";
 import Swal, { SwalConfirm } from "@/lib/swal";
+
+function SubmitWatcher() {
+  const { pending } = useFormStatus();
+  const prev = useRef(false);
+  useEffect(() => {
+    if (prev.current && !pending) Swal.close();
+    prev.current = pending;
+  }, [pending]);
+  return null;
+}
 
 type Props = React.ComponentProps<"form"> & {
   confirmTitle?: string;
@@ -57,6 +68,7 @@ export function ConfirmForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} {...props}>
+      <SubmitWatcher />
       {children}
     </form>
   );
