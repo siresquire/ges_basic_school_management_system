@@ -1,5 +1,8 @@
 "use server";
 
+// Extend the serverless function timeout (requires Vercel Pro/Enterprise).
+export const maxDuration = 60;
+
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth";
 import { getTeacherScope } from "@/lib/teacher-scope";

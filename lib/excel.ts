@@ -188,42 +188,53 @@ export async function importStudentsFromBuffer(
   const classes = await prisma.classGroup.findMany();
   const classByName = new Map(classes.map((c) => [c.name.toLowerCase(), c]));
 
-  // Pre-load ALL existing admission numbers — avoids a per-row findUnique query.
-  const seenAdmission = new Set<string>(
-    (await prisma.student.findMany({ select: { admissionNo: true } })).map((s) => s.admissionNo)
-  );
-  // Derive the next auto-number from the pre-loaded set.
+  // Pre-load everything in two parallel queries — no per-row DB calls needed.
+  const [allStudents, allUsers] = await Promise.all([
+    prisma.student.findMany({
+      select: { admissionNo: true, firstName: true, lastName: true, classGroupId: true, status: true },
+    }),
+    prisma.user.findMany({ select: { username: true } }),
+  ]);
+
+  const seenAdmission = new Set<string>(allStudents.map((s) => s.admissionNo));
   const lastNums = [...seenAdmission]
     .map((a) => parseInt(a.replace("AKW-", ""), 10))
     .filter((n) => !isNaN(n));
   let nextNum = lastNums.length > 0 ? Math.max(...lastNums) : 0;
 
-  // Pre-load existing active students by name+class — lets us skip re-uploads without
-  // an admission number in the file (the common timeout/re-upload scenario).
   const existingByNameClass = new Set<string>(
-    (await prisma.student.findMany({
-      where: { status: "ACTIVE", classGroupId: { not: null } },
-      select: { firstName: true, lastName: true, classGroupId: true },
-    })).map((s) => `${s.firstName}|${s.lastName}|${s.classGroupId}`)
+    allStudents
+      .filter((s) => s.status === "ACTIVE" && s.classGroupId != null)
+      .map((s) => `${s.firstName}|${s.lastName}|${s.classGroupId}`)
   );
-  const seenNameClass = new Set<string>(); // tracks name+class pairs seen within this file
+  const seenNameClass = new Set<string>();
+  const takenUsernames = new Set(allUsers.map((u) => u.username));
 
-  // Pre-load taken usernames once so per-row lookups are O(1).
-  const takenUsernames = new Set(
-    (await prisma.user.findMany({ select: { username: true } })).map((u) => u.username)
-  );
+  type ToCreate = {
+    studentData: {
+      admissionNo: string; firstName: string; lastName: string; otherNames: string | null;
+      gender: string; dateOfBirth: Date | null; classGroupId: string | null;
+      guardianName: string | null; guardianPhone: string | null; address: string | null;
+    };
+    username: string;
+    password: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+  };
 
-  let created = 0;
+  const toCreate: ToCreate[] = [];
   let skipped = 0;
   const details: string[] = [];
 
+  // Validation & credential-generation pass — zero DB calls in this loop.
   for (let r = 2; r <= ws.rowCount; r++) {
     const row = ws.getRow(r);
     const firstName = strVal(row.getCell(2).value).toUpperCase();
     const lastName = strVal(row.getCell(3).value).toUpperCase();
     const anything =
       firstName || lastName || strVal(row.getCell(1).value) || strVal(row.getCell(7).value);
-    if (!anything) continue; // blank row
+    if (!anything) continue;
 
     if (!firstName || !lastName) {
       details.push(`Row ${r}: first name and surname are required — skipped.`);
@@ -241,14 +252,14 @@ export async function importStudentsFromBuffer(
       continue;
     }
     if (classGroup && options?.allowedClassIds && !options.allowedClassIds.includes(classGroup.id)) {
-      details.push(`Row ${r} (${firstName} ${lastName}): class "${classNameRaw}" is outside your assigned level access — skipped.`);
+      details.push(
+        `Row ${r} (${firstName} ${lastName}): class "${classNameRaw}" is outside your assigned level access — skipped.`
+      );
       continue;
     }
 
     const rawAdmission = strVal(row.getCell(1).value);
 
-    // No admission number in file — deduplicate by name+class so re-uploading after
-    // a timeout doesn't create extra records for already-uploaded students.
     if (!rawAdmission && classGroup) {
       const nameClassKey = `${firstName}|${lastName}|${classGroup.id}`;
       if (existingByNameClass.has(nameClassKey) || seenNameClass.has(nameClassKey)) {
@@ -262,15 +273,24 @@ export async function importStudentsFromBuffer(
     const admissionNo = rawAdmission || `AKW-${String(++nextNum).padStart(4, "0")}`;
     if (seenAdmission.has(admissionNo)) {
       skipped++;
-      details.push(rawAdmission
-        ? `Row ${r}: ${admissionNo} already exists (${firstName} ${lastName}) — skipped.`
-        : `Row ${r}: ${firstName} ${lastName} — admission number collision, skipped.`);
+      details.push(
+        rawAdmission
+          ? `Row ${r}: ${admissionNo} already exists (${firstName} ${lastName}) — skipped.`
+          : `Row ${r}: ${firstName} ${lastName} — admission number collision, skipped.`
+      );
       continue;
     }
     seenAdmission.add(admissionNo);
 
-    const student = await prisma.student.create({
-      data: {
+    const base = admissionNo.toLowerCase().replace(/-/g, "");
+    const username = uniqueUsername(base, takenUsernames);
+    const password = genPassword();
+    // Cost 8 (vs the previous 10) — still 256 rounds, sufficient for temp passwords
+    // and 4× faster per hash. Saves ~80 ms × N students on the serverless function.
+    const passwordHash = bcrypt.hashSync(password, 8);
+
+    toCreate.push({
+      studentData: {
         admissionNo,
         firstName,
         lastName,
@@ -282,25 +302,39 @@ export async function importStudentsFromBuffer(
         guardianPhone: phoneVal(row.getCell(9).value),
         address: strVal(row.getCell(10).value) || null,
       },
+      username,
+      password,
+      passwordHash,
+      firstName,
+      lastName,
     });
+  }
 
-    // Auto-create portal login with temp password
-    const base = admissionNo.toLowerCase().replace(/-/g, "");
-    const username = uniqueUsername(base, takenUsernames);
-    const password = genPassword();
-    const autoUser = await prisma.user.create({
-      data: {
-        username,
-        name: `${firstName} ${lastName}`,
-        passwordHash: bcrypt.hashSync(password, 10),
-        role: "STUDENT",
-        tempPassword: password,
-      },
-    });
-    await prisma.student.update({ where: { id: student.id }, data: { userId: autoUser.id } });
-    if (classGroup) existingByNameClass.add(`${firstName}|${lastName}|${classGroup.id}`);
-
-    created++;
+  // Bulk creation — 3 transactions instead of 3 × N individual round trips.
+  let created = 0;
+  if (toCreate.length > 0) {
+    const students = await prisma.$transaction(
+      toCreate.map(({ studentData }) => prisma.student.create({ data: studentData }))
+    );
+    const users = await prisma.$transaction(
+      toCreate.map(({ username, password, passwordHash, firstName, lastName }) =>
+        prisma.user.create({
+          data: {
+            username,
+            name: `${firstName} ${lastName}`,
+            passwordHash,
+            role: "STUDENT",
+            tempPassword: password,
+          },
+        })
+      )
+    );
+    await prisma.$transaction(
+      students.map((s, i) =>
+        prisma.student.update({ where: { id: s.id }, data: { userId: users[i].id } })
+      )
+    );
+    created = toCreate.length;
   }
 
   return {
@@ -347,12 +381,26 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
   const ws = wb.getWorksheet("Staff") ?? wb.worksheets[0];
   if (!ws) return { ok: false, message: "No worksheet found in that file.", details: [] };
 
-  // Pre-load taken usernames once so per-row lookups are O(1).
-  const takenTeacherUsernames = new Set(
-    (await prisma.user.findMany({ select: { username: true } })).map((u) => u.username)
-  );
+  const [allUsers, allTeachers] = await Promise.all([
+    prisma.user.findMany({ select: { username: true } }),
+    prisma.teacher.findMany({ where: { staffId: { not: null } }, select: { staffId: true } }),
+  ]);
+  const takenUsernames = new Set(allUsers.map((u) => u.username));
+  const existingStaffIds = new Set(allTeachers.map((t) => t.staffId!));
 
-  let created = 0;
+  type ToCreate = {
+    teacherData: {
+      staffId: string | null; firstName: string; lastName: string;
+      gender: string; phone: string | null; email: string | null;
+    };
+    username: string;
+    password: string;
+    passwordHash: string;
+    firstName: string;
+    lastName: string;
+  };
+
+  const toCreate: ToCreate[] = [];
   const details: string[] = [];
 
   for (let r = 2; r <= ws.rowCount; r++) {
@@ -371,15 +419,19 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
       continue;
     }
     const staffId = strVal(row.getCell(1).value) || null;
-    if (staffId) {
-      const dup = await prisma.teacher.findUnique({ where: { staffId } });
-      if (dup) {
-        details.push(`Row ${r}: staff ID ${staffId} already exists — skipped.`);
-        continue;
-      }
+    if (staffId && existingStaffIds.has(staffId)) {
+      details.push(`Row ${r}: staff ID ${staffId} already exists — skipped.`);
+      continue;
     }
-    const teacher = await prisma.teacher.create({
-      data: {
+    if (staffId) existingStaffIds.add(staffId);
+
+    const base = staffId ?? `${firstName}${lastName}`;
+    const username = uniqueUsername(base, takenUsernames);
+    const password = genPassword();
+    const passwordHash = bcrypt.hashSync(password, 8);
+
+    toCreate.push({
+      teacherData: {
         staffId,
         firstName,
         lastName,
@@ -387,24 +439,38 @@ export async function importTeachersFromBuffer(buffer: Buffer): Promise<ImportRe
         phone: phoneVal(row.getCell(5).value),
         email: strVal(row.getCell(6).value) || null,
       },
+      username,
+      password,
+      passwordHash,
+      firstName,
+      lastName,
     });
+  }
 
-    // Auto-create login with temp password
-    const base = staffId ?? `${firstName}${lastName}`;
-    const username = uniqueUsername(base, takenTeacherUsernames);
-    const password = genPassword();
-    const autoUser = await prisma.user.create({
-      data: {
-        username,
-        name: `${firstName} ${lastName}`,
-        passwordHash: bcrypt.hashSync(password, 10),
-        role: "TEACHER",
-        tempPassword: password,
-      },
-    });
-    await prisma.teacher.update({ where: { id: teacher.id }, data: { userId: autoUser.id } });
-
-    created++;
+  let created = 0;
+  if (toCreate.length > 0) {
+    const teachers = await prisma.$transaction(
+      toCreate.map(({ teacherData }) => prisma.teacher.create({ data: teacherData }))
+    );
+    const users = await prisma.$transaction(
+      toCreate.map(({ username, password, passwordHash, firstName, lastName }) =>
+        prisma.user.create({
+          data: {
+            username,
+            name: `${firstName} ${lastName}`,
+            passwordHash,
+            role: "TEACHER",
+            tempPassword: password,
+          },
+        })
+      )
+    );
+    await prisma.$transaction(
+      teachers.map((t, i) =>
+        prisma.teacher.update({ where: { id: t.id }, data: { userId: users[i].id } })
+      )
+    );
+    created = toCreate.length;
   }
 
   return {
@@ -636,10 +702,12 @@ export async function importScoresFromBuffer(
       ? null
       : new Set(restrict.subjectsByClass[classGroupId] ?? []);
 
-  const [students, existing] = await Promise.all([
+  const [students, existing, allSubjects] = await Promise.all([
     prisma.student.findMany({ where: { classGroupId } }),
     prisma.score.findMany({ where: { classGroupId, termId } }),
+    prisma.subject.findMany({ select: { id: true, name: true } }),
   ]);
+  const subjectMap = new Map(allSubjects.map((s) => [s.id, s]));
   const byAdmission = new Map(students.map((s) => [s.admissionNo.toLowerCase(), s]));
   const existingByKey = new Map(existing.map((s) => [`${s.studentId}|${s.subjectId}`, s]));
 
@@ -665,7 +733,7 @@ export async function importScoresFromBuffer(
       details.push(`Sheet "${sheet}" skipped — that subject is not assigned to you.`);
       continue;
     }
-    const subject = await prisma.subject.findUnique({ where: { id: subjectId } });
+    const subject = subjectMap.get(subjectId);
     if (!subject) continue;
 
     for (let r = 2; r <= ws.rowCount; r++) {
@@ -728,36 +796,28 @@ export async function importScoresFromBuffer(
     };
   }
 
-  // Pass 2: apply.
-  for (const w of writes) {
-    await prisma.score.upsert({
-      where: {
-        studentId_subjectId_termId: { studentId: w.studentId, subjectId: w.subjectId, termId },
-      },
-      update: {
-        cw1: w.cw1,
-        cw2: w.cw2,
-        cw3: w.cw3,
-        cw4: w.cw4,
-        classScore: w.classScore,
-        examScore: w.examScore,
-        classGroupId,
-        recordedBy: options?.recordedBy ?? null,
-      },
-      create: {
-        studentId: w.studentId,
-        subjectId: w.subjectId,
-        termId,
-        classGroupId,
-        cw1: w.cw1,
-        cw2: w.cw2,
-        cw3: w.cw3,
-        cw4: w.cw4,
-        classScore: w.classScore,
-        examScore: w.examScore,
-        recordedBy: options?.recordedBy ?? null,
-      },
-    });
+  // Pass 2: apply all writes in one transaction instead of N round trips.
+  if (writes.length > 0) {
+    await prisma.$transaction(
+      writes.map((w) =>
+        prisma.score.upsert({
+          where: {
+            studentId_subjectId_termId: { studentId: w.studentId, subjectId: w.subjectId, termId },
+          },
+          update: {
+            cw1: w.cw1, cw2: w.cw2, cw3: w.cw3, cw4: w.cw4,
+            classScore: w.classScore, examScore: w.examScore,
+            classGroupId, recordedBy: options?.recordedBy ?? null,
+          },
+          create: {
+            studentId: w.studentId, subjectId: w.subjectId, termId, classGroupId,
+            cw1: w.cw1, cw2: w.cw2, cw3: w.cw3, cw4: w.cw4,
+            classScore: w.classScore, examScore: w.examScore,
+            recordedBy: options?.recordedBy ?? null,
+          },
+        })
+      )
+    );
   }
 
   return {
