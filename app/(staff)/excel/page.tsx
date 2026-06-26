@@ -8,6 +8,7 @@ import ExcelUpload from "@/components/excel-upload";
 import Icon from "@/components/icon";
 import { importStudentsAction, importTeachersAction, importScoresAction } from "./actions";
 
+export const maxDuration = 60; // Vercel Pro/Enterprise: extends serverless timeout for large uploads
 export const metadata = { title: "Excel Sheets" };
 
 export default async function ExcelPage({
