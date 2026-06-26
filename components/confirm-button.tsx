@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef } from "react";
 import { SwalConfirm } from "@/lib/swal";
 import Swal from "@/lib/swal";
+
+// Module-level flag — same pattern as ConfirmForm.
+// Survives re-renders and remounts so useEffect can close the popup
+// after the server action's redirect causes a re-render.
+let pendingClose = false;
 
 type Props = React.ComponentProps<"button"> & {
   confirmTitle?: string;
@@ -20,22 +25,22 @@ export function ConfirmButton({
   ...props
 }: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [isPending, startTransition] = useTransition();
-  const wasLoading = useRef(false);
-  const { formAction, ...rest } = props;
+  const confirmed = useRef(false);
 
-  useEffect(() => {
-    if (!isPending && wasLoading.current) {
-      wasLoading.current = false;
+  function check() {
+    if (pendingClose && Swal.isLoading()) {
+      pendingClose = false;
       Swal.close();
     }
-  }, [isPending]);
-
-  useEffect(() => {
-    if (Swal.isLoading()) Swal.close();
-  }, []);
+  }
+  useEffect(check, []); // on mount — handles remount-after-redirect
+  useEffect(check);     // after every render — handles in-place re-render
 
   async function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
+    if (confirmed.current) {
+      confirmed.current = false;
+      return; // let native form submission proceed
+    }
     e.preventDefault();
 
     const result = await SwalConfirm.fire({
@@ -47,7 +52,7 @@ export function ConfirmButton({
     });
 
     if (result.isConfirmed) {
-      wasLoading.current = true;
+      pendingClose = true;
       Swal.fire({
         title: loadingTitle,
         allowOutsideClick: false,
@@ -55,18 +60,13 @@ export function ConfirmButton({
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
       });
-      const form = buttonRef.current?.form;
-      const formData = form ? new FormData(form) : new FormData();
-      if (typeof formAction === "function") {
-        startTransition(async () => {
-          await (formAction as (fd: FormData) => Promise<void>)(formData);
-        });
-      }
+      confirmed.current = true;
+      buttonRef.current?.click(); // second click skips confirm, submits form with formAction
     }
   }
 
   return (
-    <button ref={buttonRef} onClick={handleClick} {...rest}>
+    <button ref={buttonRef} onClick={handleClick} {...props}>
       {children}
     </button>
   );

@@ -1,8 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef } from "react";
 import { SwalConfirm } from "@/lib/swal";
 import Swal from "@/lib/swal";
+
+// Module-level flag: true while we're waiting for the server action's redirect
+// to cause a re-render so we can close the loading popup.
+// Module scope survives both re-renders AND component remounts.
+let pendingClose = false;
+
+function SubmitWatcher() {
+  function check() {
+    if (pendingClose && Swal.isLoading()) {
+      pendingClose = false;
+      Swal.close();
+    }
+  }
+  useEffect(check, []); // fires on mount — handles remount-after-redirect
+  useEffect(check);     // fires after every render — handles in-place re-render
+  return null;
+}
 
 type Props = React.ComponentProps<"form"> & {
   confirmTitle?: string;
@@ -19,28 +36,17 @@ export function ConfirmForm({
   children,
   ...props
 }: Props) {
-  const [isPending, startTransition] = useTransition();
-  const wasLoading = useRef(false);
-  const { action, ...rest } = props;
-
-  useEffect(() => {
-    if (!isPending && wasLoading.current) {
-      wasLoading.current = false;
-      Swal.close();
-    }
-  }, [isPending]);
-
-  useEffect(() => {
-    if (Swal.isLoading()) Swal.close();
-  }, []);
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmed = useRef(false);
+  const submitterRef = useRef<HTMLElement | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-    const formData = new FormData(e.currentTarget);
-    if (submitter?.name && submitter?.value) {
-      formData.set(submitter.name, submitter.value);
+    if (confirmed.current) {
+      confirmed.current = false;
+      return;
     }
+    e.preventDefault();
+    submitterRef.current = (e.nativeEvent as SubmitEvent).submitter;
 
     const result = await SwalConfirm.fire({
       title: confirmTitle,
@@ -51,7 +57,7 @@ export function ConfirmForm({
     });
 
     if (result.isConfirmed) {
-      wasLoading.current = true;
+      pendingClose = true;
       Swal.fire({
         title: loadingTitle,
         allowOutsideClick: false,
@@ -59,16 +65,14 @@ export function ConfirmForm({
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
       });
-      if (typeof action === "function") {
-        startTransition(async () => {
-          await (action as (fd: FormData) => Promise<void>)(formData);
-        });
-      }
+      confirmed.current = true;
+      formRef.current?.requestSubmit(submitterRef.current as HTMLButtonElement | null);
     }
   }
 
   return (
-    <form {...rest} onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit} {...props}>
+      <SubmitWatcher />
       {children}
     </form>
   );
