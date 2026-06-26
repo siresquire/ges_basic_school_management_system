@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useFormStatus } from "react-dom";
-import Swal, { SwalConfirm } from "@/lib/swal";
+import { useEffect, useRef, useTransition } from "react";
+import { SwalConfirm } from "@/lib/swal";
+import Swal from "@/lib/swal";
 
 type Props = React.ComponentProps<"button"> & {
   confirmTitle?: string;
@@ -11,11 +11,6 @@ type Props = React.ComponentProps<"button"> & {
   loadingTitle?: string;
 };
 
-/**
- * Drop-in replacement for <button formAction={...}> on destructive actions.
- * Intercepts the click, shows a SweetAlert2 confirmation, then re-fires
- * the click (allowing the formAction to submit) only if the user confirms.
- */
 export function ConfirmButton({
   confirmTitle = "Are you sure?",
   confirmText = "This action cannot be undone.",
@@ -25,19 +20,22 @@ export function ConfirmButton({
   ...props
 }: Props) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const confirmed = useRef(false);
-  const { pending } = useFormStatus();
-  const prevPending = useRef(false);
+  const [isPending, startTransition] = useTransition();
+  const wasLoading = useRef(false);
+  const { formAction, ...rest } = props;
+
   useEffect(() => {
-    if (prevPending.current && !pending) Swal.close();
-    prevPending.current = pending;
-  }, [pending]);
+    if (!isPending && wasLoading.current) {
+      wasLoading.current = false;
+      Swal.close();
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (Swal.isLoading()) Swal.close();
+  }, []);
 
   async function handleClick(e: React.MouseEvent<HTMLButtonElement>) {
-    if (confirmed.current) {
-      confirmed.current = false;
-      return;
-    }
     e.preventDefault();
 
     const result = await SwalConfirm.fire({
@@ -49,6 +47,7 @@ export function ConfirmButton({
     });
 
     if (result.isConfirmed) {
+      wasLoading.current = true;
       Swal.fire({
         title: loadingTitle,
         allowOutsideClick: false,
@@ -56,13 +55,18 @@ export function ConfirmButton({
         showConfirmButton: false,
         didOpen: () => Swal.showLoading(),
       });
-      confirmed.current = true;
-      buttonRef.current?.click();
+      const form = buttonRef.current?.form;
+      const formData = form ? new FormData(form) : new FormData();
+      if (typeof formAction === "function") {
+        startTransition(async () => {
+          await (formAction as (fd: FormData) => Promise<void>)(formData);
+        });
+      }
     }
   }
 
   return (
-    <button ref={buttonRef} onClick={handleClick} {...props}>
+    <button ref={buttonRef} onClick={handleClick} {...rest}>
       {children}
     </button>
   );
