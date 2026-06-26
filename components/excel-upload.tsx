@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import type { ExcelActionState } from "@/app/(staff)/excel/actions";
+import Swal from "@/lib/swal";
 import Icon from "./icon";
 
 /**
@@ -23,6 +24,22 @@ export default function ExcelUpload({
   const lastSubmission = useRef<FormData | null>(null);
   const [fileName, setFileName] = useState("");
   const inputId = useId();
+
+  // Show / hide a loading popup while the upload is in flight.
+  useEffect(() => {
+    if (pending) {
+      Swal.fire({
+        title: "Uploading & processing…",
+        text: "Please wait — this may take a moment for large files.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
+    } else {
+      Swal.close();
+    }
+  }, [pending]);
 
   // After a rejection, restore the chosen file into the (auto-reset) input.
   useEffect(() => {

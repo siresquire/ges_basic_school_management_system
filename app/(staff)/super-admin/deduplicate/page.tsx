@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { deduplicateClass } from "./actions";
+import { ConfirmForm } from "@/components/confirm-form";
 
 export const metadata = { title: "Deduplicate Students" };
 
@@ -149,12 +150,18 @@ export default async function DeduplicatePage({
                   </td>
                   <td className="text-right">
                     {s.safeToRemove > 0 && (
-                      <form action={deduplicateClass}>
+                      <ConfirmForm
+                        action={deduplicateClass}
+                        confirmTitle="Remove duplicates?"
+                        confirmText={`Remove ${s.safeToRemove} duplicate ${s.safeToRemove === 1 ? "entry" : "entries"} from ${s.className}? This cannot be undone.`}
+                        confirmButtonText="Yes, remove them"
+                        loadingTitle="Removing duplicates…"
+                      >
                         <input type="hidden" name="classId" value={s.classId} />
                         <button type="submit" className="btn-danger btn-sm">
                           Remove {s.safeToRemove}
                         </button>
-                      </form>
+                      </ConfirmForm>
                     )}
                   </td>
                 </tr>

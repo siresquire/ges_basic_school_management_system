@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { SwalConfirm } from "@/lib/swal";
+import Swal, { SwalConfirm } from "@/lib/swal";
 
 type Props = React.ComponentProps<"form"> & {
   confirmTitle?: string;
   confirmText?: string;
   confirmButtonText?: string;
+  loadingTitle?: string;
 };
 
 /**
@@ -17,6 +18,7 @@ export function ConfirmForm({
   confirmTitle = "Are you sure?",
   confirmText = "This action cannot be undone.",
   confirmButtonText = "Yes, proceed",
+  loadingTitle = "Processing…",
   children,
   ...props
 }: Props) {
@@ -41,6 +43,13 @@ export function ConfirmForm({
     });
 
     if (result.isConfirmed) {
+      Swal.fire({
+        title: loadingTitle,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
       confirmed.current = true;
       formRef.current?.requestSubmit(submitterRef.current as HTMLButtonElement | null);
     }

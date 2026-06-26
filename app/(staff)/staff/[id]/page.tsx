@@ -7,6 +7,7 @@ import SignatureCard from "@/components/signature-card";
 import { updateTeacher, setTeacherLogin, addAssignment, removeAssignment } from "../actions";
 import { ShowToast } from "@/components/show-toast";
 import { ConfirmForm } from "@/components/confirm-form";
+import { ProcessingForm } from "@/components/processing-form";
 import { PasswordInput } from "@/components/password-input";
 import { TempPasswordBadge } from "@/components/temp-password-badge";
 
@@ -146,7 +147,7 @@ export default async function TeacherPage({
             )}
           </tbody>
         </table>
-        <form action={addAssignment.bind(null, teacher.id)} className="flex flex-wrap items-end gap-2 border-t border-gray-200 p-4">
+        <ProcessingForm action={addAssignment.bind(null, teacher.id)} loadingTitle="Assigning subject…" className="flex flex-wrap items-end gap-2 border-t border-gray-200 p-4">
           <div>
             <label className="label">Class</label>
             <select name="classGroupId" className="input">
@@ -168,7 +169,7 @@ export default async function TeacherPage({
             </select>
           </div>
           <button className="btn-primary">Assign</button>
-        </form>
+        </ProcessingForm>
       </div>
     </div>
   );

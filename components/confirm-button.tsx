@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { SwalConfirm } from "@/lib/swal";
+import Swal, { SwalConfirm } from "@/lib/swal";
 
 type Props = React.ComponentProps<"button"> & {
   confirmTitle?: string;
   confirmText?: string;
   confirmButtonText?: string;
+  loadingTitle?: string;
 };
 
 /**
@@ -18,6 +19,7 @@ export function ConfirmButton({
   confirmTitle = "Are you sure?",
   confirmText = "This action cannot be undone.",
   confirmButtonText = "Yes, delete it",
+  loadingTitle = "Processing…",
   children,
   ...props
 }: Props) {
@@ -40,6 +42,13 @@ export function ConfirmButton({
     });
 
     if (result.isConfirmed) {
+      Swal.fire({
+        title: loadingTitle,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading(),
+      });
       confirmed.current = true;
       buttonRef.current?.click();
     }
